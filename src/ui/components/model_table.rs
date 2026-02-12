@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
+    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table},
     Frame,
 };
 
@@ -25,6 +25,7 @@ pub fn render(
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(colors.border))
         .title_style(
             Style::default()
@@ -44,7 +45,7 @@ pub fn render(
 }
 
 fn build_title(has_scroll: bool, scroll: usize, total: usize, visible: usize) -> String {
-    let mut title = " Per-Model Usage ".to_string();
+    let mut title = " Per-Model Usage: ".to_string();
     if has_scroll {
         if scroll > 0 {
             title.insert_str(0, "↑ ");
@@ -88,8 +89,8 @@ fn render_table(
             let percentage_str = format!("{:.1}%", model.percentage);
             let usage_str = format!("{:.0}/{:.0}", model.used, model.limit);
 
-            // Barra visual extendida (25 caracteres) con fondo
-            let bar_width: usize = 25;
+            // Barra visual extendida (más ancha) con fondo
+            let bar_width: usize = 60;
             let filled = ((model.percentage / 100.0) * bar_width as f64) as usize;
 
             // Revert to █ for filled part and ░ for empty part
@@ -97,8 +98,9 @@ fn render_table(
             let empty = "░".repeat(bar_width.saturating_sub(filled));
 
             Row::new(vec![
+                Cell::from(""), // Left Spacer
                 Cell::from(Span::styled(
-                    format!("  {}", model.name), // Margen izquierdo
+                    format!("{}", model.name), // Removed manual margin in string
                     Style::default().fg(colors.foreground),
                 )),
                 Cell::from(Line::from(vec![
@@ -109,13 +111,14 @@ fn render_table(
                     Span::styled(empty, Style::default().fg(colors.muted)),
                 ])),
                 Cell::from(Span::styled(
-                    format!("{:>8}", percentage_str),
+                    format!("{:^8}", percentage_str),
                     Style::default().fg(get_usage_color(model.percentage, colors)),
                 )),
                 Cell::from(Span::styled(
-                    format!("{:>10}", usage_str),
+                    format!("{:^10}", usage_str),
                     Style::default().fg(colors.muted),
                 )),
+                Cell::from(""), // Right Spacer
             ])
         })
         .collect();
@@ -123,14 +126,16 @@ fn render_table(
     let table = Table::new(
         rows,
         [
-            Constraint::Percentage(30), // Model
-            Constraint::Percentage(50), // Progress (más ancho)
-            Constraint::Percentage(12), // Usage
-            Constraint::Percentage(13), // Count
+            Constraint::Length(1),      // Left Spacer (Margin)
+            Constraint::Percentage(28), // Model (Reduced to close gap)
+            Constraint::Percentage(50), // Progress (Increased to fill space)
+            Constraint::Percentage(10), // Usage
+            Constraint::Percentage(10), // Count
+            Constraint::Length(1),      // Right Spacer (Margin)
         ],
     )
     .header(
-        Row::new(vec!["  Model", "Progress", "  Usage", "  Count"]).style(
+        Row::new(vec!["", "Model", "Progress", " Usage", "   Count", ""]).style(
             Style::default()
                 .fg(colors.foreground)
                 .add_modifier(Modifier::BOLD),

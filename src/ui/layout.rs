@@ -22,15 +22,20 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 }
 
 /// Layout principal del dashboard
-pub fn dashboard_layout(area: Rect) -> Vec<Rect> {
+pub fn dashboard_layout(area: Rect, model_count: usize) -> Vec<Rect> {
+    // Calculate required height for models:
+    // Header (1) + Borders (2) + Rows (model_count) + Bottom Padding (1)
+    // We add a safety minimum of 4
+    let model_height = ((model_count as u16) + 4).max(4);
+
     Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Header
-            Constraint::Length(1),  // Spacing
-            Constraint::Length(10), // Overall usage
-            Constraint::Length(1),  // Spacing
-            Constraint::Min(10),    // Model usage
+            Constraint::Length(3),            // Header
+            Constraint::Length(0),            // Spacing (Reduced to 0)
+            Constraint::Length(10),           // Overall usage
+            Constraint::Length(0),            // Spacing (Reduced to 0)
+            Constraint::Length(model_height), // Model usage (Fixed height)
         ])
         .split(area)
         .to_vec()

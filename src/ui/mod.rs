@@ -85,7 +85,7 @@ fn render_ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors, app: &AppS
     let help_bar_area = main_layout[1];
 
     // Layout del contenido
-    let content_chunks = dashboard_layout(content_area);
+    let content_chunks = dashboard_layout(content_area, stats.models.len());
 
     // Renderizar componentes del dashboard
     header::render(f, content_chunks[0], stats, colors);

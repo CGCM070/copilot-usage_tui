@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
 
@@ -14,8 +14,9 @@ use super::super::get_usage_color;
 
 pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColors) {
     let block = Block::default()
-        .title(" Overall Usage ")
+        .title(" Overall Usage: ")
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(colors.border))
         .title_style(
             Style::default()
