@@ -1,5 +1,9 @@
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
+/// Tamaño de diálogos popup (menus, cache, etc.)
+pub const POPUP_WIDTH: u16 = 40;
+pub const POPUP_HEIGHT: u16 = 30;
+
 /// Crea un rectángulo centrado con porcentajes dados
 pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()

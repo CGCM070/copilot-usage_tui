@@ -1,17 +1,17 @@
 use ratatui::{
-    Frame,
     layout::{Alignment, Constraint, Direction, Layout},
     style::Style,
     widgets::{Block, BorderType, Borders, Clear, Paragraph},
+    Frame,
 };
 
 use crate::themes::ThemeColors;
-use crate::ui::layout::centered_rect;
+use crate::ui::layout::{centered_rect, POPUP_HEIGHT, POPUP_WIDTH};
 use crate::ui::state::CacheInfo;
 
 /// Renderiza un diálogo con información del cache
 pub fn render(f: &mut Frame, colors: &ThemeColors, info: &CacheInfo) {
-    let area = centered_rect(50, 40, f.area());
+    let area = centered_rect(POPUP_WIDTH, POPUP_HEIGHT, f.area());
 
     let block = Block::default()
         .title(" Cache Status ")

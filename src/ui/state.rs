@@ -37,7 +37,9 @@ pub struct Command {
 pub struct AppStateManager {
     pub state: AppState,
     pub selected_command: usize,
+    pub command_scroll_offset: usize,
     pub selected_theme: usize,
+    pub theme_scroll_offset: usize,
     pub model_scroll_offset: usize,
     pub commands: Vec<Command>,
     pub themes: Vec<&'static str>,
@@ -50,7 +52,9 @@ impl AppStateManager {
         Self {
             state: AppState::Dashboard,
             selected_command: 0,
+            command_scroll_offset: 0,
             selected_theme: 0,
+            theme_scroll_offset: 0,
             model_scroll_offset: 0,
             commands: vec![
                 Command {
@@ -104,6 +108,7 @@ impl AppStateManager {
     // Navegación en menú de comandos
     pub fn next_command(&mut self) {
         self.selected_command = (self.selected_command + 1) % self.commands.len();
+        self.adjust_command_scroll(5);
     }
 
     pub fn previous_command(&mut self) {
@@ -112,11 +117,25 @@ impl AppStateManager {
         } else {
             self.selected_command -= 1;
         }
+        self.adjust_command_scroll(5);
+    }
+
+    fn adjust_command_scroll(&mut self, visible_count: usize) {
+        if self.commands.len() > visible_count {
+            if self.selected_command >= self.command_scroll_offset + visible_count {
+                self.command_scroll_offset = self.selected_command - visible_count + 1;
+            } else if self.selected_command < self.command_scroll_offset {
+                self.command_scroll_offset = self.selected_command;
+            }
+        } else {
+            self.command_scroll_offset = 0;
+        }
     }
 
     // Navegación en selector de temas
     pub fn next_theme(&mut self) {
         self.selected_theme = (self.selected_theme + 1) % self.themes.len();
+        self.adjust_theme_scroll(5);
     }
 
     pub fn previous_theme(&mut self) {
@@ -124,6 +143,19 @@ impl AppStateManager {
             self.selected_theme = self.themes.len() - 1;
         } else {
             self.selected_theme -= 1;
+        }
+        self.adjust_theme_scroll(5);
+    }
+
+    fn adjust_theme_scroll(&mut self, visible_count: usize) {
+        if self.themes.len() > visible_count {
+            if self.selected_theme >= self.theme_scroll_offset + visible_count {
+                self.theme_scroll_offset = self.selected_theme - visible_count + 1;
+            } else if self.selected_theme < self.theme_scroll_offset {
+                self.theme_scroll_offset = self.selected_theme;
+            }
+        } else {
+            self.theme_scroll_offset = 0;
         }
     }
 

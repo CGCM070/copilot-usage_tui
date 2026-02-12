@@ -1,17 +1,19 @@
 use ratatui::{
-    Frame,
     style::{Modifier, Style},
     widgets::{Block, Borders, Clear, List, ListItem},
+    Frame,
 };
 
 use crate::themes::ThemeColors;
-use crate::ui::layout::centered_rect;
+use crate::ui::layout::{centered_rect, POPUP_HEIGHT, POPUP_WIDTH};
 use crate::ui::state::AppStateManager;
 
 use super::super::get_usage_color;
 
+const MIN_VISIBLE_FOR_SCROLL: usize = 5;
+
 pub fn render(f: &mut Frame, colors: &ThemeColors, app: &AppStateManager) {
-    let area = centered_rect(40, 40, f.area());
+    let area = centered_rect(POPUP_WIDTH, POPUP_HEIGHT, f.area());
 
     f.render_widget(Clear, area);
 
@@ -28,15 +30,29 @@ pub fn render(f: &mut Frame, colors: &ThemeColors, app: &AppStateManager) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    let items: Vec<ListItem> = app
-        .themes
+    let total_themes = app.themes.len();
+
+    let (start, end) = if total_themes > MIN_VISIBLE_FOR_SCROLL {
+        let visible_rows = inner.height as usize;
+        if visible_rows >= total_themes {
+            (0, total_themes)
+        } else {
+            let start = app.theme_scroll_offset;
+            (start, (start + visible_rows).min(total_themes))
+        }
+    } else {
+        (0, total_themes)
+    };
+
+    let items: Vec<ListItem> = app.themes[start..end]
         .iter()
         .enumerate()
         .map(|(i, theme)| {
-            let padding = " ".repeat(inner.width as usize - theme.len());
-            let text = format!("{}{}", theme, padding);
+            let actual_index = start + i;
+            let padding = " ".repeat(inner.width as usize - theme.len() - 1);
+            let text = format!("{} {}", theme, padding);
 
-            let style = if i == app.selected_theme {
+            let style = if actual_index == app.selected_theme {
                 Style::default()
                     .fg(colors.foreground)
                     .bg(get_usage_color(50.0, colors))

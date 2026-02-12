@@ -4,13 +4,13 @@ pub mod events;
 pub mod layout;
 pub mod state;
 
-use std::io::{self, Write};
+use std::io;
 
 use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode, size as terminal_size},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
     Frame, Terminal,
@@ -42,22 +42,8 @@ fn format_error_debug(error: &anyhow::Error) -> String {
     format!("{:?}", error)
 }
 
-/// Fixed terminal size for TUI (cols, rows)
-const TUI_SIZE: (u16, u16) = (80, 25);
-
-/// Resize terminal window using ANSI escape sequence
-fn resize_terminal(cols: u16, rows: u16) {
-    // CSI 8 ; rows ; cols t - Resize window to rows x cols characters
-    print!("\x1b[8;{};{}t", rows, cols);
-    let _ = io::stdout().flush();
-}
-
 /// Ejecuta la UI interactiva y retorna la acción seleccionada
 pub fn run_ui(stats: &UsageStats, theme: Theme) -> Result<Option<String>> {
-    // Save original terminal size and resize to fixed dimensions
-    let original_size = terminal_size().ok();
-    resize_terminal(TUI_SIZE.0, TUI_SIZE.1);
-
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -74,11 +60,6 @@ pub fn run_ui(stats: &UsageStats, theme: Theme) -> Result<Option<String>> {
         DisableMouseCapture
     )?;
     terminal.show_cursor()?;
-
-    // Restore original terminal size
-    if let Some((cols, rows)) = original_size {
-        resize_terminal(cols, rows);
-    }
 
     if let Err(err) = res {
         eprintln!("{:?}", err);
