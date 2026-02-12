@@ -1,9 +1,8 @@
 use ratatui::{
-    layout::Rect,
+    Frame,
     style::{Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, Paragraph},
-    Frame,
 };
 
 use crate::themes::ThemeColors;

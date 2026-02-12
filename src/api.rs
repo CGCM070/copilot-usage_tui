@@ -1,7 +1,7 @@
+use crate::models::{ModelUsage, UsageData, UsageStats};
 use anyhow::{Context, Result};
 use chrono::{Datelike, TimeZone, Utc};
 use reqwest::header::HeaderMap;
-use crate::models::{UsageData, UsageStats, ModelUsage};
 
 const GITHUB_API_URL: &str = "https://api.github.com";
 
@@ -48,10 +48,10 @@ impl ApiClient {
             .context("Failed to send request to GitHub API")?;
 
         let status = response.status();
-        
+
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
-            
+
             if status == 403 {
                 anyhow::bail!(
                     "Access Forbidden (403). Your token may lack the 'Plan' permission. \
@@ -106,8 +106,12 @@ impl ApiClient {
 pub fn calculate_stats(data: &UsageData) -> UsageStats {
     const TOTAL_LIMIT: f64 = 300.0;
     const COST_PER_REQUEST: f64 = 0.04;
-    
-    let total_used: f64 = data.usage_items.iter().map(|item| item.gross_quantity).sum();
+
+    let total_used: f64 = data
+        .usage_items
+        .iter()
+        .map(|item| item.gross_quantity)
+        .sum();
     let total_billed: f64 = data.usage_items.iter().map(|item| item.net_quantity).sum();
     let percentage = (total_used / TOTAL_LIMIT) * 100.0;
 
@@ -117,7 +121,8 @@ pub fn calculate_stats(data: &UsageData) -> UsageStats {
     } else {
         (now.year(), now.month() + 1)
     };
-    let reset_date = Utc.with_ymd_and_hms(next_year, next_month, 1, 0, 0, 0)
+    let reset_date = Utc
+        .with_ymd_and_hms(next_year, next_month, 1, 0, 0, 0)
         .earliest()
         .expect("Invalid date");
 
@@ -151,5 +156,6 @@ pub fn calculate_stats(data: &UsageData) -> UsageStats {
         reset_date,
         models,
         estimated_cost,
+        username: data.user.clone(),
     }
 }

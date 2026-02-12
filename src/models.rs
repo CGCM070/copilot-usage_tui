@@ -43,6 +43,7 @@ pub struct UsageStats {
     pub reset_date: DateTime<Utc>,
     pub models: Vec<ModelUsage>,
     pub estimated_cost: f64,
+    pub username: String,
 }
 
 #[derive(Debug, Clone)]

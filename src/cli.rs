@@ -70,7 +70,7 @@ pub async fn run() -> Result<()> {
 
 async fn run_waybar_mode(force_refresh: bool) -> Result<()> {
     let config_manager = ConfigManager::new()?;
-    
+
     // Check config first to avoid interactive setup prompts in JSON output
     if config_manager.load()?.is_none() {
         eprintln!("Configuration missing. Run interactively first.");
@@ -102,19 +102,19 @@ async fn run_interactive_mode(cli: Cli) -> Result<()> {
             Some(action) => {
                 match action.as_str() {
                     "quit" => break,
-                    
+
                     action if action.starts_with("theme:") => {
                         let theme_name = action.strip_prefix("theme:").unwrap();
                         current_theme = Theme::from_str(theme_name);
                         save_theme_preference(theme_name).await?;
                     }
-                    
+
                     "reconfigure" => {
                         reconfigure().await?;
                         // Después de reconfigurar, salimos y el usuario debe reiniciar
                         break;
                     }
-                    
+
                     _ => {}
                 }
             }
@@ -150,7 +150,10 @@ async fn show_config() -> Result<()> {
     let config_manager = ConfigManager::new()?;
     let config = config_manager.load()?.unwrap_or_default();
 
-    println!("Configuration file: {}", config_manager.config_path().display());
+    println!(
+        "Configuration file: {}",
+        config_manager.config_path().display()
+    );
     if config.token.is_empty() {
         println!("Token: {}", "(not set)".red());
     } else {
@@ -247,10 +250,11 @@ async fn handle_api_error(e: &anyhow::Error, config_manager: &ConfigManager) -> 
         eprintln!("  • Account → Plan (Read) permission");
         eprintln!();
 
-        let should_reconfigure = dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
-            .with_prompt("Reconfigure with correct token?")
-            .default(true)
-            .interact()?;
+        let should_reconfigure =
+            dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                .with_prompt("Reconfigure with correct token?")
+                .default(true)
+                .interact()?;
 
         if should_reconfigure {
             config_manager.setup_interactive()?;

@@ -130,10 +130,6 @@ impl AppStateManager {
         self.commands[self.selected_command].id
     }
 
-    pub fn reset_scroll(&mut self) {
-        self.model_scroll_offset = 0;
-    }
-
     // Spinner animation
     pub fn advance_spinner(&mut self) {
         self.spinner_state = (self.spinner_state + 1) % 10;

@@ -10,23 +10,23 @@ use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Frame, Terminal,
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
     style::Color,
-    Frame, Terminal,
 };
 
 use crate::models::{Theme, UsageStats};
 use crate::themes::ThemeColors;
 
+use self::async_handler::{AsyncHandler, AsyncResult};
 use self::components::*;
 use self::events::EventHandler;
 use self::layout::{centered_rect, dashboard_layout};
 use self::state::{AppState, AppStateManager};
-use self::async_handler::{AsyncHandler, AsyncResult};
 
 use std::time::Duration;
 
@@ -148,12 +148,9 @@ fn render_ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors, app: &AppS
             app.get_spinner_char(),
             "Refreshing data from API...",
         ),
-        AppState::LoadingCache => loading_dialog::render(
-            f,
-            colors,
-            app.get_spinner_char(),
-            "Loading cache info...",
-        ),
+        AppState::LoadingCache => {
+            loading_dialog::render(f, colors, app.get_spinner_char(), "Loading cache info...")
+        }
         AppState::ShowCacheInfo(ref info) => cache_info_dialog::render(f, colors, info),
         AppState::ShowError(ref msg) => error_dialog::render(f, colors, msg),
         _ => {}
@@ -172,16 +169,16 @@ fn render_help_bar(
     let help_text = match app.state {
         AppState::Dashboard => {
             if total_models > 8 {
-                "/: Menu  •  r: Refresh  •  t: Theme  •  ↑↓: Scroll  •  h: Help  •  q: Quit"
+                "/: Menu • r: Refresh • t: Theme • ↑↓: Scroll • h: Help • q: Quit"
             } else {
-                "/: Menu  •  r: Refresh  •  t: Theme  •  h: Help  •  q: Quit"
+                "/: Menu • r: Refresh • t: Theme • h: Help • q: Quit"
             }
         }
         AppState::CommandMenu => {
-            "↑↓/jk: Navigate  •  Enter: Select  •  Esc: Close  •  Letter: Quick jump"
+            "↑↓/jk: Navigate • Enter: Select • Esc: Close • Letter: Quick jump"
         }
-        AppState::ThemeSelector => "↑↓/jk: Navigate  •  Enter: Select  •  Esc: Cancel",
-        _ => "y: Yes  •  n: No  •  Esc: Cancel",
+        AppState::ThemeSelector => "↑↓/jk: Navigate • Enter: Select • Esc: Cancel",
+        _ => "y: Yes • n: No • Esc: Cancel",
     };
 
     let help = Paragraph::new(help_text)

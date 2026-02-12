@@ -44,7 +44,7 @@ impl ConfigManager {
 
     pub fn setup_interactive(&self) -> Result<Config> {
         use console::style;
-        use dialoguer::{theme::ColorfulTheme, Input};
+        use dialoguer::{Input, theme::ColorfulTheme};
 
         println!(
             "{}",
