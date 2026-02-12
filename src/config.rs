@@ -21,6 +21,12 @@ impl ConfigManager {
         Ok(Self { config_path })
     }
 
+    /// Create a ConfigManager with a custom path (for testing)
+    #[cfg(test)]
+    pub fn with_path(config_path: PathBuf) -> Self {
+        Self { config_path }
+    }
+
     pub fn config_path(&self) -> &PathBuf {
         &self.config_path
     }
@@ -44,7 +50,7 @@ impl ConfigManager {
 
     pub fn setup_interactive(&self) -> Result<Config> {
         use console::style;
-        use dialoguer::{Input, theme::ColorfulTheme};
+        use dialoguer::{theme::ColorfulTheme, Input};
 
         println!(
             "{}",
@@ -76,13 +82,14 @@ impl ConfigManager {
             .items(&["dark", "light", "dracula", "nord", "monokai", "gruvbox"])
             .interact()?;
 
-        let themes = vec!["dark", "light", "dracula", "nord", "monokai", "gruvbox"];
+        let themes = ["dark", "light", "dracula", "nord", "monokai", "gruvbox"];
 
         let config = Config {
             token: token.trim().to_string(),
             theme: themes[theme_idx].to_string(),
             cache_ttl_minutes: 5,
             waybar_format: "{percentage}%".to_string(),
+            username: None,
         };
 
         self.save(&config)?;
@@ -92,5 +99,92 @@ impl ConfigManager {
         println!("Location: {}", style(self.config_path.display()).dim());
 
         Ok(config)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn create_test_config() -> Config {
+        Config {
+            token: "ghp_test123".to_string(),
+            theme: "dark".to_string(),
+            cache_ttl_minutes: 5,
+            waybar_format: "{percentage}%".to_string(),
+            username: Some("testuser".to_string()),
+        }
+    }
+
+    #[test]
+    fn test_load_nonexistent() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("nonexistent.toml");
+        let manager = ConfigManager::with_path(config_path);
+
+        let result = manager.load().unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_save_and_load() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.toml");
+        let manager = ConfigManager::with_path(config_path);
+
+        let config = create_test_config();
+        manager.save(&config).unwrap();
+
+        let loaded = manager.load().unwrap().unwrap();
+        assert_eq!(loaded.token, "ghp_test123");
+        assert_eq!(loaded.theme, "dark");
+        assert_eq!(loaded.cache_ttl_minutes, 5);
+        assert_eq!(loaded.username, Some("testuser".to_string()));
+    }
+
+    #[test]
+    fn test_config_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let expected_path = temp_dir.path().join("myconfig.toml");
+        let manager = ConfigManager::with_path(expected_path.clone());
+
+        assert_eq!(manager.config_path(), &expected_path);
+    }
+
+    #[test]
+    fn test_update_config() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.toml");
+        let manager = ConfigManager::with_path(config_path);
+
+        let mut config = create_test_config();
+        manager.save(&config).unwrap();
+
+        // Update theme
+        config.theme = "nord".to_string();
+        manager.save(&config).unwrap();
+
+        let loaded = manager.load().unwrap().unwrap();
+        assert_eq!(loaded.theme, "nord");
+    }
+
+    #[test]
+    fn test_username_optional() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.toml");
+        let manager = ConfigManager::with_path(config_path);
+
+        let config = Config {
+            token: "ghp_test".to_string(),
+            theme: "dark".to_string(),
+            cache_ttl_minutes: 5,
+            waybar_format: "{percentage}%".to_string(),
+            username: None,
+        };
+        manager.save(&config).unwrap();
+
+        let loaded = manager.load().unwrap().unwrap();
+        assert!(loaded.username.is_none());
     }
 }

@@ -30,6 +30,18 @@ use self::state::{AppState, AppStateManager};
 
 use std::time::Duration;
 
+/// Formats error for user-friendly display
+fn format_error_for_user(error: &anyhow::Error) -> String {
+    // Use Display format (user-friendly) instead of Debug
+    format!("{}", error)
+}
+
+/// Formats error with full debug details
+fn format_error_debug(error: &anyhow::Error) -> String {
+    // Use Debug format for full stack trace
+    format!("{:?}", error)
+}
+
 /// Ejecuta la UI interactiva y retorna la acción seleccionada
 pub fn run_ui(stats: &UsageStats, theme: Theme) -> Result<Option<String>> {
     enable_raw_mode()?;
@@ -70,12 +82,11 @@ fn run_app<B: Backend>(
         terminal.draw(|f| render_ui(f, &stats, &colors, app))?;
 
         // Poll events con timeout (non-blocking) - cada 50ms para spinner rápido
-        if event::poll(Duration::from_millis(50))? {
-            if let Ok(evt) = event::read() {
-                if EventHandler::handle_event(app, evt, stats.models.len(), &async_handler) {
-                    return Ok(());
-                }
-            }
+        if event::poll(Duration::from_millis(50))?
+            && let Ok(evt) = event::read()
+            && EventHandler::handle_event(app, evt, stats.models.len(), &async_handler)
+        {
+            return Ok(());
         }
 
         // Avanzar spinner si estamos en loading
@@ -91,9 +102,14 @@ fn run_app<B: Backend>(
                     app.state = AppState::Dashboard;
                 }
                 AsyncResult::RefreshComplete(Err(e)) => {
-                    // Mostrar error en modal con stack trace completo
-                    let error_msg = format!("{:?}", e);
-                    app.state = AppState::ShowError(error_msg);
+                    // Mostrar error limpio para el usuario
+                    let error_msg = format_error_for_user(&e);
+                    let debug_msg = format_error_debug(&e);
+                    app.state = AppState::ShowError {
+                        message: error_msg,
+                        debug_message: debug_msg,
+                        show_debug: false,
+                    };
                 }
                 AsyncResult::CacheInfoReady(info) => {
                     app.state = AppState::ShowCacheInfo(info);
@@ -152,7 +168,11 @@ fn render_ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors, app: &AppS
             loading_dialog::render(f, colors, app.get_spinner_char(), "Loading cache info...")
         }
         AppState::ShowCacheInfo(ref info) => cache_info_dialog::render(f, colors, info),
-        AppState::ShowError(ref msg) => error_dialog::render(f, colors, msg),
+        AppState::ShowError {
+            ref message,
+            ref debug_message,
+            show_debug,
+        } => error_dialog::render(f, colors, message, debug_message, show_debug),
         _ => {}
     }
 }

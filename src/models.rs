@@ -61,6 +61,8 @@ pub struct Config {
     pub theme: String,
     pub cache_ttl_minutes: u64,
     pub waybar_format: String,
+    #[serde(default)]
+    pub username: Option<String>,
 }
 
 impl Default for Config {
@@ -70,6 +72,7 @@ impl Default for Config {
             theme: "dark".to_string(),
             cache_ttl_minutes: 5,
             waybar_format: "{percentage}%".to_string(),
+            username: None,
         }
     }
 }
@@ -79,6 +82,19 @@ impl Default for Config {
 pub struct CacheEntry {
     pub data: UsageData,
     pub timestamp: DateTime<Utc>,
+}
+
+/// Cache status for robust cache checks
+#[derive(Debug, Clone)]
+pub enum CacheStatus {
+    /// Cache is fresh and contains valid data
+    Fresh(UsageData),
+    /// Cache exists but has expired
+    Expired,
+    /// Cache file doesn't exist or couldn't be read
+    Missing,
+    /// Cache file is corrupted or invalid
+    Corrupted,
 }
 
 /// Waybar output format

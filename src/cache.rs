@@ -1,4 +1,4 @@
-use crate::models::{CacheEntry, UsageData};
+use crate::models::{CacheEntry, CacheStatus, UsageData};
 use anyhow::{Context, Result};
 use chrono::{DateTime, Duration, Utc};
 use directories::ProjectDirs;
@@ -26,24 +26,6 @@ impl Cache {
         })
     }
 
-    pub fn get(&self) -> Result<Option<UsageData>> {
-        if !self.cache_path.exists() {
-            return Ok(None);
-        }
-
-        let content = fs::read_to_string(&self.cache_path)?;
-        let entry: CacheEntry = serde_json::from_str(&content)?;
-
-        let age = Utc::now() - entry.timestamp;
-        let ttl = Duration::minutes(self.ttl_minutes as i64);
-
-        if age > ttl {
-            return Ok(None);
-        }
-
-        Ok(Some(entry.data))
-    }
-
     pub fn set(&self, data: &UsageData) -> Result<()> {
         let entry = CacheEntry {
             data: data.clone(),
@@ -63,11 +45,29 @@ impl Cache {
         Ok(())
     }
 
-    pub fn is_fresh(&self) -> bool {
-        if let Ok(Some(_)) = self.get() {
-            true
+    /// Returns detailed cache status
+    pub fn status(&self) -> CacheStatus {
+        if !self.cache_path.exists() {
+            return CacheStatus::Missing;
+        }
+
+        let content = match fs::read_to_string(&self.cache_path) {
+            Ok(c) => c,
+            Err(_) => return CacheStatus::Corrupted,
+        };
+
+        let entry: CacheEntry = match serde_json::from_str(&content) {
+            Ok(e) => e,
+            Err(_) => return CacheStatus::Corrupted,
+        };
+
+        let age = Utc::now() - entry.timestamp;
+        let ttl = Duration::minutes(self.ttl_minutes as i64);
+
+        if age > ttl {
+            CacheStatus::Expired
         } else {
-            false
+            CacheStatus::Fresh(entry.data)
         }
     }
 

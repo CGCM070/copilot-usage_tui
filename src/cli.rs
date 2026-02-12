@@ -5,7 +5,7 @@ use colored::Colorize;
 use crate::api::{ApiClient, calculate_stats};
 use crate::cache::Cache;
 use crate::config::ConfigManager;
-use crate::models::Theme;
+use crate::models::{CacheStatus, Theme};
 use crate::ui;
 use crate::waybar;
 
@@ -47,37 +47,40 @@ pub enum Commands {
 /// Ejecuta la CLI y maneja los comandos
 pub async fn run() -> Result<()> {
     let cli = Cli::parse();
+    let config_manager = ConfigManager::new()?;
 
     // Comandos directos (no interactivos)
     if cli.cache_status {
-        return show_cache_status().await;
+        return show_cache_status(&config_manager).await;
     }
 
     // Modo Waybar
     if cli.waybar {
-        return run_waybar_mode(cli.refresh).await;
+        return run_waybar_mode(&config_manager, cli.refresh).await;
     }
 
     match cli.command {
-        Some(Commands::Config) => return show_config().await,
-        Some(Commands::Reset) | Some(Commands::Reconfigure) => return reconfigure().await,
+        Some(Commands::Config) => return show_config(&config_manager).await,
+        Some(Commands::Reset) | Some(Commands::Reconfigure) => {
+            reconfigure(&config_manager).await?;
+            // Continue to interactive mode after reconfiguration
+            println!("\nLaunching dashboard...\n");
+        }
         None => {}
     }
 
     // Modo interactivo
-    run_interactive_mode(cli).await
+    run_interactive_mode(&config_manager, cli).await
 }
 
-async fn run_waybar_mode(force_refresh: bool) -> Result<()> {
-    let config_manager = ConfigManager::new()?;
-
+async fn run_waybar_mode(config_manager: &ConfigManager, force_refresh: bool) -> Result<()> {
     // Check config first to avoid interactive setup prompts in JSON output
     if config_manager.load()?.is_none() {
         eprintln!("Configuration missing. Run interactively first.");
         return Ok(());
     }
 
-    match fetch_usage_data(force_refresh).await {
+    match fetch_usage_data(config_manager, force_refresh).await {
         Ok(stats) => {
             let config = config_manager.load()?.unwrap_or_default();
             let output = waybar::generate_output(&stats, &config.waybar_format);
@@ -90,55 +93,75 @@ async fn run_waybar_mode(force_refresh: bool) -> Result<()> {
     Ok(())
 }
 
-async fn run_interactive_mode(cli: Cli) -> Result<()> {
-    let mut current_theme = get_initial_theme(&cli.theme)?;
-    let force_refresh = cli.refresh;
+async fn run_interactive_mode(config_manager: &ConfigManager, cli: Cli) -> Result<()> {
+    let mut force_refresh = cli.refresh;
+    let mut current_theme: Option<Theme> = cli.theme.as_ref().map(|t| Theme::from_str(t));
 
-    // Fetch inicial
-    let stats = fetch_usage_data(force_refresh).await?;
-
+    // Main loop: allows reloading stats after reconfigure
     loop {
-        match ui::run_ui(&stats, current_theme)? {
-            Some(action) => {
-                match action.as_str() {
-                    "quit" => break,
+        // Fetch data (fresh on first run if --refresh, or after reconfigure)
+        let stats = fetch_usage_data(config_manager, force_refresh).await?;
+        force_refresh = false;
 
-                    action if action.starts_with("theme:") => {
-                        let theme_name = action.strip_prefix("theme:").unwrap();
-                        current_theme = Theme::from_str(theme_name);
-                        save_theme_preference(theme_name).await?;
-                    }
+        // Get theme: use cached value or load from config
+        let theme = current_theme.unwrap_or_else(|| {
+            config_manager
+                .load()
+                .ok()
+                .flatten()
+                .map(|c| Theme::from_str(&c.theme))
+                .unwrap_or(Theme::Dark)
+        });
 
-                    "reconfigure" => {
-                        reconfigure().await?;
-                        // Después de reconfigurar, salimos y el usuario debe reiniciar
-                        break;
-                    }
-
-                    _ => {}
-                }
-            }
+        // Run UI with current stats
+        match ui::run_ui(&stats, theme)? {
             None => break,
+            Some(action) => match action.as_str() {
+                "quit" => break,
+
+                action if action.starts_with("theme:") => {
+                    let theme_name = action.strip_prefix("theme:").unwrap();
+                    current_theme = Some(Theme::from_str(theme_name));
+                    save_theme_preference(config_manager, theme_name)?;
+                }
+
+                "reconfigure" => {
+                    reconfigure(config_manager).await?;
+                    // Reset theme to reload from new config
+                    current_theme = None;
+                    force_refresh = true;
+                }
+
+                _ => {}
+            },
         }
     }
 
     Ok(())
 }
 
-async fn show_cache_status() -> Result<()> {
-    let config_manager = ConfigManager::new()?;
+async fn show_cache_status(config_manager: &ConfigManager) -> Result<()> {
     if let Some(config) = config_manager.load()? {
         let cache = Cache::new(config.cache_ttl_minutes)?;
-        match cache.last_updated()? {
-            Some(timestamp) => {
-                println!("Cache last updated: {}", timestamp);
-                if cache.is_fresh() {
-                    println!("Cache status: {}", "fresh".green());
-                } else {
-                    println!("Cache status: {}", "expired".yellow());
+        match cache.status() {
+            CacheStatus::Fresh(_) => {
+                if let Some(timestamp) = cache.last_updated()? {
+                    println!("Cache last updated: {}", timestamp);
                 }
+                println!("Cache status: {}", "fresh".green());
             }
-            None => println!("Cache status: {}", "empty".red()),
+            CacheStatus::Expired => {
+                if let Some(timestamp) = cache.last_updated()? {
+                    println!("Cache last updated: {}", timestamp);
+                }
+                println!("Cache status: {}", "expired".yellow());
+            }
+            CacheStatus::Missing => {
+                println!("Cache status: {}", "empty".red());
+            }
+            CacheStatus::Corrupted => {
+                println!("Cache status: {}", "corrupted".red());
+            }
         }
     } else {
         println!("No configuration found.");
@@ -146,8 +169,7 @@ async fn show_cache_status() -> Result<()> {
     Ok(())
 }
 
-async fn show_config() -> Result<()> {
-    let config_manager = ConfigManager::new()?;
+async fn show_config(config_manager: &ConfigManager) -> Result<()> {
     let config = config_manager.load()?.unwrap_or_default();
 
     println!(
@@ -165,26 +187,14 @@ async fn show_config() -> Result<()> {
     Ok(())
 }
 
-async fn reconfigure() -> Result<()> {
+async fn reconfigure(config_manager: &ConfigManager) -> Result<()> {
     println!("Reconfiguring...");
-    let config_manager = ConfigManager::new()?;
     config_manager.setup_interactive()?;
     println!("Configuration updated!");
     Ok(())
 }
 
-fn get_initial_theme(cli_theme: &Option<String>) -> Result<Theme> {
-    if let Some(theme_str) = cli_theme {
-        Ok(Theme::from_str(theme_str))
-    } else {
-        let config_manager = ConfigManager::new()?;
-        let config = config_manager.load()?.unwrap_or_default();
-        Ok(Theme::from_str(&config.theme))
-    }
-}
-
-async fn save_theme_preference(theme_name: &str) -> Result<()> {
-    let config_manager = ConfigManager::new()?;
+fn save_theme_preference(config_manager: &ConfigManager, theme_name: &str) -> Result<()> {
     if let Some(mut config) = config_manager.load()? {
         config.theme = theme_name.to_string();
         config_manager.save(&config)?;
@@ -192,9 +202,11 @@ async fn save_theme_preference(theme_name: &str) -> Result<()> {
     Ok(())
 }
 
-async fn fetch_usage_data(force_refresh: bool) -> Result<crate::models::UsageStats> {
-    let config_manager = ConfigManager::new()?;
-    let config = match config_manager.load()? {
+async fn fetch_usage_data(
+    config_manager: &ConfigManager,
+    force_refresh: bool,
+) -> Result<crate::models::UsageStats> {
+    let mut config = match config_manager.load()? {
         Some(cfg) => cfg,
         None => {
             println!("Welcome to GitHub Copilot Usage CLI!");
@@ -208,18 +220,34 @@ async fn fetch_usage_data(force_refresh: bool) -> Result<crate::models::UsageSta
         cache.invalidate()?;
     }
 
-    let usage_data = match cache.get()? {
-        Some(data) => data,
-        None => {
+    let usage_data = match cache.status() {
+        CacheStatus::Fresh(data) => data,
+        _ => {
             let api_client = ApiClient::new(config.token.clone())?;
 
-            let username = match api_client.get_authenticated_user().await {
-                Ok(user) => user,
-                Err(_) => {
-                    println!("\nCould not determine username from token.");
-                    dialoguer::Input::with_theme(&dialoguer::theme::ColorfulTheme::default())
+            // Try to get username: 1) from config, 2) from API, 3) prompt user
+            let username = if let Some(ref cached_username) = config.username {
+                cached_username.clone()
+            } else {
+                match api_client.get_authenticated_user().await {
+                    Ok(user) => {
+                        // Cache the username for future use
+                        config.username = Some(user.clone());
+                        config_manager.save(&config)?;
+                        user
+                    }
+                    Err(_) => {
+                        println!("\nCould not determine username from token.");
+                        let user: String = dialoguer::Input::with_theme(
+                            &dialoguer::theme::ColorfulTheme::default(),
+                        )
                         .with_prompt("Enter your GitHub username")
-                        .interact_text()?
+                        .interact_text()?;
+                        // Cache the username for future use
+                        config.username = Some(user.clone());
+                        config_manager.save(&config)?;
+                        user
+                    }
                 }
             };
 
@@ -229,7 +257,7 @@ async fn fetch_usage_data(force_refresh: bool) -> Result<crate::models::UsageSta
                     data
                 }
                 Err(e) => {
-                    handle_api_error(&e, &config_manager).await?;
+                    handle_api_error(&e, config_manager).await?;
                     return Err(e);
                 }
             }

@@ -5,6 +5,14 @@ use reqwest::header::HeaderMap;
 
 const GITHUB_API_URL: &str = "https://api.github.com";
 
+/// Safely extract text from response, with fallback
+async fn extract_response_text(response: reqwest::Response) -> String {
+    match response.text().await {
+        Ok(text) => text,
+        Err(e) => format!("(Failed to read response body: {})", e),
+    }
+}
+
 pub struct ApiClient {
     client: reqwest::Client,
 }
@@ -28,6 +36,7 @@ impl ApiClient {
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .timeout(std::time::Duration::from_secs(30))
+            .connect_timeout(std::time::Duration::from_secs(10))
             .user_agent("copilot-usage/0.1.0")
             .build()?;
 
@@ -45,27 +54,39 @@ impl ApiClient {
             .get(&url)
             .send()
             .await
-            .context("Failed to send request to GitHub API")?;
+            .context("Failed to connect to GitHub API. Check your internet connection.")?;
 
         let status = response.status();
 
         if !status.is_success() {
-            let text = response.text().await.unwrap_or_default();
+            let text = extract_response_text(response).await;
 
-            if status == 403 {
-                anyhow::bail!(
-                    "Access Forbidden (403). Your token may lack the 'Plan' permission. \
-                    Please ensure you have enabled 'Plan' → Read-only in Account permissions."
-                );
-            } else if status == 404 {
-                anyhow::bail!(
+            match status.as_u16() {
+                401 => anyhow::bail!(
+                    "Unauthorized (401). Your token is invalid or expired.\n\
+                    Please run 'copilot-usage reconfigure' to set a new token."
+                ),
+                403 => anyhow::bail!(
+                    "Access Forbidden (403). Your token lacks the 'Plan' permission.\n\
+                    Please ensure you have enabled 'Plan' -> Read-only in Account permissions."
+                ),
+                404 => anyhow::bail!(
                     "Not Found (404). This could mean:\n\
                     1. You don't have GitHub Copilot Pro on a personal plan\n\
                     2. Your Copilot is managed through an organization\n\
                     3. The billing API is not available for your account type"
-                );
-            } else {
-                anyhow::bail!("GitHub API error: {} - {}", status, text);
+                ),
+                429 => anyhow::bail!(
+                    "Rate Limit Exceeded (429). GitHub API limit reached.\n\
+                    Please wait a few minutes before trying again."
+                ),
+                500..=599 => anyhow::bail!(
+                    "GitHub Server Error ({}). GitHub's API is experiencing issues.\n\
+                    Please try again later. Response: {}",
+                    status,
+                    text
+                ),
+                _ => anyhow::bail!("GitHub API error ({}): {}", status, text),
             }
         }
 
@@ -85,12 +106,19 @@ impl ApiClient {
             .get(&url)
             .send()
             .await
-            .context("Failed to get user info")?;
+            .context("Failed to connect to GitHub API. Check your internet connection.")?;
 
         if !response.status().is_success() {
             let status = response.status();
-            let text = response.text().await.unwrap_or_default();
-            anyhow::bail!("Failed to get user: {} - {}", status, text);
+            let text = extract_response_text(response).await;
+
+            match status.as_u16() {
+                401 => anyhow::bail!("Token unauthorized (401). Cannot determine username."),
+                403 => anyhow::bail!(
+                    "Token lacks 'user' permission (403). Fine-grained tokens may not support this."
+                ),
+                _ => anyhow::bail!("Failed to get user ({}): {}", status, text),
+            }
         }
 
         #[derive(serde::Deserialize)]
@@ -157,5 +185,94 @@ pub fn calculate_stats(data: &UsageData) -> UsageStats {
         models,
         estimated_cost,
         username: data.user.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{TimePeriod, UsageItem};
+
+    fn create_test_usage_item(model: &str, gross_quantity: f64, net_quantity: f64) -> UsageItem {
+        UsageItem {
+            product: "copilot".to_string(),
+            sku: "premium".to_string(),
+            model: model.to_string(),
+            unit_type: "request".to_string(),
+            price_per_unit: 0.04,
+            gross_quantity,
+            gross_amount: gross_quantity * 0.04,
+            discount_quantity: 0.0,
+            discount_amount: 0.0,
+            net_quantity,
+            net_amount: net_quantity * 0.04,
+        }
+    }
+
+    fn create_test_usage_data(items: Vec<UsageItem>) -> UsageData {
+        UsageData {
+            time_period: TimePeriod {
+                year: 2026,
+                month: Some(2),
+                day: None,
+            },
+            user: "testuser".to_string(),
+            usage_items: items,
+        }
+    }
+
+    #[test]
+    fn test_calculate_stats_empty() {
+        let data = create_test_usage_data(vec![]);
+        let stats = calculate_stats(&data);
+
+        assert_eq!(stats.total_used, 0.0);
+        assert_eq!(stats.total_limit, 300.0);
+        assert_eq!(stats.percentage, 0.0);
+        assert_eq!(stats.models.len(), 0);
+        assert_eq!(stats.estimated_cost, 0.0);
+        assert_eq!(stats.username, "testuser");
+    }
+
+    #[test]
+    fn test_calculate_stats_single_model() {
+        let data = create_test_usage_data(vec![create_test_usage_item("gpt-4", 100.0, 0.0)]);
+        let stats = calculate_stats(&data);
+
+        assert_eq!(stats.total_used, 100.0);
+        assert!((stats.percentage - 33.333).abs() < 0.01);
+        assert_eq!(stats.models.len(), 1);
+        assert_eq!(stats.models[0].name, "gpt-4");
+        assert_eq!(stats.models[0].used, 100.0);
+    }
+
+    #[test]
+    fn test_calculate_stats_multiple_models() {
+        let data = create_test_usage_data(vec![
+            create_test_usage_item("gpt-4", 100.0, 0.0),
+            create_test_usage_item("claude-sonnet", 50.0, 0.0),
+            create_test_usage_item("gpt-4", 25.0, 0.0), // Same model, should aggregate
+        ]);
+        let stats = calculate_stats(&data);
+
+        assert_eq!(stats.total_used, 175.0);
+        assert_eq!(stats.models.len(), 2);
+        // Models should be sorted by usage descending
+        assert_eq!(stats.models[0].name, "gpt-4");
+        assert_eq!(stats.models[0].used, 125.0); // 100 + 25
+        assert_eq!(stats.models[1].name, "claude-sonnet");
+        assert_eq!(stats.models[1].used, 50.0);
+    }
+
+    #[test]
+    fn test_calculate_stats_with_billing() {
+        let data = create_test_usage_data(vec![
+            create_test_usage_item("gpt-4", 350.0, 50.0), // 50 billed
+        ]);
+        let stats = calculate_stats(&data);
+
+        assert_eq!(stats.total_used, 350.0);
+        assert!((stats.percentage - 116.67).abs() < 0.01); // Over 100%
+        assert!((stats.estimated_cost - 2.0).abs() < 0.01); // 50 * 0.04 = 2.0
     }
 }

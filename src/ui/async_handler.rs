@@ -4,7 +4,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use crate::api::{ApiClient, calculate_stats};
 use crate::cache::Cache;
 use crate::config::ConfigManager;
-use crate::models::UsageStats;
+use crate::models::{CacheStatus, UsageStats};
 use crate::ui::state::CacheInfo;
 
 /// Resultado de una operación async
@@ -83,25 +83,25 @@ impl AsyncHandler {
     async fn do_cache_info() -> CacheInfo {
         let config_manager = ConfigManager::new().ok();
 
-        if let Some(config_manager) = config_manager {
-            if let Ok(Some(config)) = config_manager.load() {
-                let cache = Cache::new(config.cache_ttl_minutes).ok();
+        if let Some(config_manager) = config_manager
+            && let Ok(Some(config)) = config_manager.load()
+        {
+            let cache = Cache::new(config.cache_ttl_minutes).ok();
 
-                if let Some(cache) = cache {
-                    let last_updated = cache
-                        .last_updated()
-                        .ok()
-                        .flatten()
-                        .map(|ts| ts.format("%Y-%m-%d %H:%M:%S").to_string());
+            if let Some(cache) = cache {
+                let last_updated = cache
+                    .last_updated()
+                    .ok()
+                    .flatten()
+                    .map(|ts| ts.format("%Y-%m-%d %H:%M:%S").to_string());
 
-                    let is_fresh = cache.is_fresh();
+                let is_fresh = matches!(cache.status(), CacheStatus::Fresh(_));
 
-                    return CacheInfo {
-                        last_updated,
-                        is_fresh,
-                        ttl_minutes: config.cache_ttl_minutes,
-                    };
-                }
+                return CacheInfo {
+                    last_updated,
+                    is_fresh,
+                    ttl_minutes: config.cache_ttl_minutes,
+                };
             }
         }
 

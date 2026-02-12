@@ -101,7 +101,7 @@ fn render_table(
             Row::new(vec![
                 Cell::from(""), // Left Spacer
                 Cell::from(Span::styled(
-                    format!("{}", display_name), // Removed manual margin in string
+                    display_name.to_string(),
                     Style::default().fg(colors.foreground),
                 )),
                 Cell::from(Line::from(vec![

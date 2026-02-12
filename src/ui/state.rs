@@ -10,7 +10,11 @@ pub enum AppState {
     LoadingRefresh,
     LoadingCache,
     ShowCacheInfo(CacheInfo),
-    ShowError(String),
+    ShowError {
+        message: String,
+        debug_message: String,
+        show_debug: bool,
+    },
 }
 
 /// Información del cache para mostrar en UI

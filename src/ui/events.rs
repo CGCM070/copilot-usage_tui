@@ -13,10 +13,10 @@ impl EventHandler {
         total_models: usize,
         async_handler: &AsyncHandler,
     ) -> bool {
-        if let Event::Key(key) = event {
-            if key.kind == KeyEventKind::Press {
-                return Self::handle_key_press(app, key.code, total_models, async_handler);
-            }
+        if let Event::Key(key) = event
+            && key.kind == KeyEventKind::Press
+        {
+            return Self::handle_key_press(app, key.code, total_models, async_handler);
         }
         false
     }
@@ -36,7 +36,7 @@ impl EventHandler {
             AppState::ShowHelp => Self::handle_help(app, code),
             AppState::LoadingRefresh | AppState::LoadingCache => Self::handle_loading(app, code),
             AppState::ShowCacheInfo(_) => Self::handle_cache_info(app, code),
-            AppState::ShowError(_) => Self::handle_error(app, code),
+            AppState::ShowError { .. } => Self::handle_error(app, code),
         }
     }
 
@@ -92,7 +92,7 @@ impl EventHandler {
                 if let Some(pos) = app
                     .commands
                     .iter()
-                    .position(|cmd| cmd.shortcut.map_or(false, |s| s == c.to_ascii_lowercase()))
+                    .position(|cmd| cmd.shortcut.is_some_and(|s| s == c.to_ascii_lowercase()))
                 {
                     app.selected_command = pos;
                     return Self::execute_selected_command(app, async_handler);
@@ -197,8 +197,27 @@ impl EventHandler {
         false
     }
 
-    fn handle_error(app: &mut AppStateManager, _code: KeyCode) -> bool {
-        app.state = AppState::Dashboard;
+    fn handle_error(app: &mut AppStateManager, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Char('d') => {
+                // Toggle debug view
+                if let AppState::ShowError {
+                    message,
+                    debug_message,
+                    show_debug,
+                } = &app.state
+                {
+                    app.state = AppState::ShowError {
+                        message: message.clone(),
+                        debug_message: debug_message.clone(),
+                        show_debug: !show_debug,
+                    };
+                }
+            }
+            _ => {
+                app.state = AppState::Dashboard;
+            }
+        }
         false
     }
 }
