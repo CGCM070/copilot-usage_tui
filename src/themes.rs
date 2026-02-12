@@ -15,7 +15,6 @@ impl ThemeColors {
     pub fn from_theme(theme: Theme) -> Self {
         match theme {
             Theme::Dark => Self::dark(),
-            Theme::Dracula => Self::dracula(),
             Theme::Nord => Self::nord(),
             Theme::Monokai => Self::monokai(),
             Theme::Gruvbox => Self::gruvbox(),
@@ -36,18 +35,6 @@ impl ThemeColors {
             muted: Color::Rgb(98, 114, 164),
             border: Color::Rgb(68, 71, 90),
             bar_empty: Color::Rgb(40, 42, 54),
-        }
-    }
-
-    pub fn dracula() -> Self {
-        Self {
-            foreground: Color::Rgb(248, 248, 242),
-            success: Color::Rgb(80, 250, 123),
-            warning: Color::Rgb(255, 184, 108),
-            error: Color::Rgb(255, 85, 85),
-            muted: Color::Rgb(98, 114, 164),
-            border: Color::Rgb(68, 71, 90),
-            bar_empty: Color::Rgb(68, 71, 90),
         }
     }
 

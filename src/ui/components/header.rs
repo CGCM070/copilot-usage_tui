@@ -21,7 +21,6 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     // Theme name capitalized
     let theme_name = match theme {
         Theme::Dark => "Dark",
-        Theme::Dracula => "Dracula",
         Theme::Nord => "Nord",
         Theme::Monokai => "Monokai",
         Theme::Gruvbox => "Gruvbox",

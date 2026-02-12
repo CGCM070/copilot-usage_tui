@@ -81,7 +81,6 @@ impl ConfigManager {
             .default(0)
             .items(&[
                 "dark",
-                "dracula",
                 "nord",
                 "monokai",
                 "gruvbox",
@@ -95,7 +94,6 @@ impl ConfigManager {
 
         let themes = [
             "dark",
-            "dracula",
             "nord",
             "monokai",
             "gruvbox",

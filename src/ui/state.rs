@@ -94,7 +94,6 @@ impl AppStateManager {
             ],
             themes: vec![
                 "dark",
-                "dracula",
                 "nord",
                 "monokai",
                 "gruvbox",
