@@ -1,9 +1,9 @@
 use ratatui::{
-    Frame,
     layout::{Alignment, Constraint, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table},
+    Frame,
 };
 
 use crate::models::UsageStats;
@@ -90,13 +90,59 @@ fn render_table(
             let usage_str = format!("{:.0}/{:.0}", model.used, model.limit);
             let display_name = model.name.strip_prefix("Auto: ").unwrap_or(&model.name);
 
-            // Barra visual extendida (más ancha) con fondo
+            // Segmented progress bar (green -> orange -> red)
             let bar_width: usize = 60;
             let filled = ((model.percentage / 100.0) * bar_width as f64) as usize;
+            let filled = filled.min(bar_width);
 
-            // Revert to █ for filled part and ░ for empty part
-            let bar = "█".repeat(filled);
-            let empty = "░".repeat(bar_width.saturating_sub(filled));
+            // Zone boundaries
+            let zone_success_end = ((75.0 / 100.0) * bar_width as f64) as usize;
+            let zone_warning_end = ((90.0 / 100.0) * bar_width as f64) as usize;
+
+            // Build segmented bar spans
+            let mut bar_spans: Vec<Span> = Vec::new();
+
+            // Segment 1: Success (0-75%)
+            let success_chars = filled.min(zone_success_end);
+            if success_chars > 0 {
+                bar_spans.push(Span::styled(
+                    "█".repeat(success_chars),
+                    Style::default().fg(colors.success),
+                ));
+            }
+
+            // Segment 2: Warning (75-90%)
+            if filled > zone_success_end {
+                let warning_chars = filled
+                    .min(zone_warning_end)
+                    .saturating_sub(zone_success_end);
+                if warning_chars > 0 {
+                    bar_spans.push(Span::styled(
+                        "█".repeat(warning_chars),
+                        Style::default().fg(Color::Rgb(255, 184, 108)),
+                    ));
+                }
+            }
+
+            // Segment 3: Error (90-100%)
+            if filled > zone_warning_end {
+                let error_chars = filled.saturating_sub(zone_warning_end);
+                if error_chars > 0 {
+                    bar_spans.push(Span::styled(
+                        "█".repeat(error_chars),
+                        Style::default().fg(Color::Rgb(255, 85, 85)),
+                    ));
+                }
+            }
+
+            // Empty part
+            let empty_len = bar_width.saturating_sub(filled);
+            if empty_len > 0 {
+                bar_spans.push(Span::styled(
+                    "░".repeat(empty_len),
+                    Style::default().fg(colors.muted),
+                ));
+            }
 
             Row::new(vec![
                 Cell::from(""), // Left Spacer
@@ -104,13 +150,7 @@ fn render_table(
                     display_name.to_string(),
                     Style::default().fg(colors.foreground),
                 )),
-                Cell::from(Line::from(vec![
-                    Span::styled(
-                        bar,
-                        Style::default().fg(get_usage_color(model.percentage, colors)),
-                    ),
-                    Span::styled(empty, Style::default().fg(colors.muted)),
-                ])),
+                Cell::from(Line::from(bar_spans)),
                 Cell::from(Span::styled(
                     format!("{:^8}", percentage_str),
                     Style::default().fg(get_usage_color(model.percentage, colors)),

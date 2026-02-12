@@ -69,22 +69,63 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     ]));
     f.render_widget(usage_text, layout[0]);
 
-    // 2. Requests Bar (Custom Text-based, no background)
+    // 2. Requests Bar - Segmented gradient (green -> orange -> red)
+    // Zone thresholds: 0-75% = success, 75-90% = warning, 90-100% = error
     let bar_width = layout[1].width as usize;
     let filled_len = ((stats.percentage / 100.0) * bar_width as f64) as usize;
     let filled_len = filled_len.min(bar_width);
 
-    let filled_str = "█".repeat(filled_len);
-    // Use "░" for the empty part to match the requested "gray box" style
-    let empty_str = "░".repeat(bar_width.saturating_sub(filled_len));
+    // Calculate zone boundaries in characters
+    let zone_success_end = ((75.0 / 100.0) * bar_width as f64) as usize; // 0-75%
+    let zone_warning_end = ((90.0 / 100.0) * bar_width as f64) as usize; // 75-90%
+                                                                         // 90-100% is the rest
 
-    let bar_text = Paragraph::new(Line::from(vec![
-        Span::styled(
-            filled_str,
-            Style::default().fg(get_usage_color(stats.percentage, colors)),
-        ),
-        Span::styled(empty_str, Style::default().fg(colors.muted)),
-    ]));
+    // Build segmented bar
+    let mut bar_spans: Vec<Span> = Vec::new();
+
+    // Segment 1: Success zone (0-75%)
+    let success_chars = filled_len.min(zone_success_end);
+    if success_chars > 0 {
+        bar_spans.push(Span::styled(
+            "█".repeat(success_chars),
+            Style::default().fg(colors.success),
+        ));
+    }
+
+    // Segment 2: Warning zone (75-90%)
+    if filled_len > zone_success_end {
+        let warning_chars = filled_len
+            .min(zone_warning_end)
+            .saturating_sub(zone_success_end);
+        if warning_chars > 0 {
+            bar_spans.push(Span::styled(
+                "█".repeat(warning_chars),
+                Style::default().fg(Color::Rgb(255, 184, 108)), // Constant warning orange
+            ));
+        }
+    }
+
+    // Segment 3: Error zone (90-100%)
+    if filled_len > zone_warning_end {
+        let error_chars = filled_len.saturating_sub(zone_warning_end);
+        if error_chars > 0 {
+            bar_spans.push(Span::styled(
+                "█".repeat(error_chars),
+                Style::default().fg(Color::Rgb(255, 85, 85)), // Constant error red
+            ));
+        }
+    }
+
+    // Empty part
+    let empty_len = bar_width.saturating_sub(filled_len);
+    if empty_len > 0 {
+        bar_spans.push(Span::styled(
+            "░".repeat(empty_len),
+            Style::default().fg(colors.muted),
+        ));
+    }
+
+    let bar_text = Paragraph::new(Line::from(bar_spans));
     f.render_widget(bar_text, layout[1]);
 
     // 3. Spacer (Empty)
