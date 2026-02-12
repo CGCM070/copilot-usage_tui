@@ -9,11 +9,10 @@ use crossterm::{
 };
 use ratatui::{
     backend::{Backend, CrosstermBackend},
-    layout::{Alignment, Constraint, Direction, Layout, Margin},
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    symbols,
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Cell, Gauge, Paragraph, Row, Table, Wrap},
+    widgets::{Block, Borders, Cell, Gauge, Paragraph, Row, Table},
     Frame, Terminal,
 };
 use std::io;
@@ -68,14 +67,25 @@ fn ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors) {
         .direction(Direction::Vertical)
         .margin(2)
         .constraints([
-            Constraint::Length(3), // Title
-            Constraint::Length(8), // Overall usage
-            Constraint::Min(10),   // Per-model usage
-            Constraint::Length(3), // Footer
+            Constraint::Length(3),
+            Constraint::Length(8),
+            Constraint::Min(10),
+            Constraint::Length(3),
         ])
         .split(f.area());
 
-    // Title
+    render_title(f, chunks[0], stats, colors);
+    render_overall_usage(f, chunks[1], stats, colors);
+    render_model_usage(f, chunks[2], stats, colors);
+    render_footer(f, chunks[3], stats, colors);
+}
+
+fn render_title(
+    f: &mut Frame,
+    area: ratatui::layout::Rect,
+    stats: &UsageStats,
+    colors: &ThemeColors,
+) {
     let title = Paragraph::new(Text::from(vec![
         Line::from(vec![Span::styled(
             "GitHub Copilot Pro — Premium Requests Usage",
@@ -93,30 +103,34 @@ fn ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors) {
             Style::default().fg(colors.muted),
         )]),
     ]))
-    .alignment(Alignment::Center)
-    .block(Block::default());
+    .alignment(Alignment::Center);
 
-    f.render_widget(title, chunks[0]);
+    f.render_widget(title, area);
+}
 
-    // Overall usage block
+fn render_overall_usage(
+    f: &mut Frame,
+    area: ratatui::layout::Rect,
+    stats: &UsageStats,
+    colors: &ThemeColors,
+) {
     let overall_block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(colors.border))
         .title(" Overall Usage ");
 
-    let overall_chunks = Layout::default()
+    let inner_chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(1), // Label
-            Constraint::Length(1), // Bar
-            Constraint::Length(1), // Details
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
         ])
-        .split(overall_block.inner(chunks[1]));
+        .split(overall_block.inner(area));
 
-    f.render_widget(overall_block, chunks[1]);
+    f.render_widget(overall_block, area);
 
-    // Usage label
     let usage_label = Paragraph::new(Line::from(vec![
         Span::styled("Usage: ", Style::default().fg(colors.foreground)),
         Span::styled(
@@ -129,19 +143,17 @@ fn ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors) {
                 .add_modifier(Modifier::BOLD),
         ),
     ]));
-    f.render_widget(usage_label, overall_chunks[0]);
+    f.render_widget(usage_label, inner_chunks[0]);
 
-    // Gauge bar
     let gauge = Gauge::default()
         .gauge_style(Style::default().fg(colors.bar_filled).bg(colors.bar_empty))
         .percent(stats.percentage as u16)
         .label("");
-    f.render_widget(gauge, overall_chunks[1]);
+    f.render_widget(gauge, inner_chunks[1]);
 
-    // Month progress
-    let days_in_month = 30.0; // Approximation
+    let days_in_month = days_in_current_month();
     let current_day = Utc::now().day() as f64;
-    let month_progress = (current_day / days_in_month) * 100.0;
+    let month_progress = (current_day / days_in_month as f64) * 100.0;
 
     let month_label = Paragraph::new(Line::from(vec![
         Span::styled("Month: ", Style::default().fg(colors.foreground)),
@@ -150,62 +162,75 @@ fn ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors) {
             Style::default().fg(colors.muted),
         ),
     ]));
-    f.render_widget(month_label, overall_chunks[2]);
+    f.render_widget(month_label, inner_chunks[2]);
+}
 
-    // Per-model usage block
+fn render_model_usage(
+    f: &mut Frame,
+    area: ratatui::layout::Rect,
+    stats: &UsageStats,
+    colors: &ThemeColors,
+) {
     let models_block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(colors.border))
         .title(" Per-model Usage ");
 
-    f.render_widget(models_block.clone(), chunks[2]);
+    f.render_widget(models_block.clone(), area);
 
-    let models_area = models_block.inner(chunks[2]);
+    let models_area = models_block.inner(area);
 
     if stats.models.is_empty() {
         let no_data = Paragraph::new("No model usage data available")
             .alignment(Alignment::Center)
             .style(Style::default().fg(colors.muted));
         f.render_widget(no_data, models_area);
-    } else {
-        let rows: Vec<Row> = stats
-            .models
-            .iter()
-            .map(|model| {
-                let bar_width = 20;
-                let filled = ((model.percentage / 100.0) * bar_width as f64) as usize;
-                let bar = format!("{:<width$}", "█".repeat(filled), width = bar_width);
-
-                Row::new(vec![
-                    Cell::from(model.name.clone()),
-                    Cell::from(format!("{:.0}/{:.0}", model.used, model.limit)),
-                    Cell::from(Span::styled(
-                        bar,
-                        Style::default().fg(get_usage_color(model.percentage, colors)),
-                    )),
-                    Cell::from(format!("{:.1}%", model.percentage)),
-                ])
-            })
-            .collect();
-
-        let table = Table::new(
-            rows,
-            [
-                Constraint::Percentage(40),
-                Constraint::Percentage(20),
-                Constraint::Percentage(25),
-                Constraint::Percentage(15),
-            ],
-        )
-        .header(
-            Row::new(vec!["Model", "Usage", "Visual", "%"])
-                .style(Style::default().add_modifier(Modifier::BOLD)),
-        );
-
-        f.render_widget(table, models_area);
+        return;
     }
 
-    // Footer
+    let rows: Vec<Row> = stats
+        .models
+        .iter()
+        .map(|model| {
+            let bar_width = 20;
+            let filled = ((model.percentage / 100.0) * bar_width as f64) as usize;
+            let bar = format!("{:<width$}", "█".repeat(filled), width = bar_width);
+
+            Row::new(vec![
+                Cell::from(model.name.clone()),
+                Cell::from(format!("{:.0}/{:.0}", model.used, model.limit)),
+                Cell::from(Span::styled(
+                    bar,
+                    Style::default().fg(get_usage_color(model.percentage, colors)),
+                )),
+                Cell::from(format!("{:.1}%", model.percentage)),
+            ])
+        })
+        .collect();
+
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Percentage(40),
+            Constraint::Percentage(20),
+            Constraint::Percentage(25),
+            Constraint::Percentage(15),
+        ],
+    )
+    .header(
+        Row::new(vec!["Model", "Usage", "Visual", "%"])
+            .style(Style::default().add_modifier(Modifier::BOLD)),
+    );
+
+    f.render_widget(table, models_area);
+}
+
+fn render_footer(
+    f: &mut Frame,
+    area: ratatui::layout::Rect,
+    stats: &UsageStats,
+    colors: &ThemeColors,
+) {
     let footer_text = if stats.estimated_cost > 0.0 {
         format!(
             "Press 'q' or ESC to exit | Estimated cost: ${:.2}",
@@ -218,7 +243,7 @@ fn ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors) {
     let footer = Paragraph::new(footer_text)
         .alignment(Alignment::Center)
         .style(Style::default().fg(colors.muted));
-    f.render_widget(footer, chunks[3]);
+    f.render_widget(footer, area);
 }
 
 fn get_usage_color(percentage: f64, colors: &ThemeColors) -> Color {
@@ -229,4 +254,17 @@ fn get_usage_color(percentage: f64, colors: &ThemeColors) -> Color {
     } else {
         colors.success
     }
+}
+
+fn days_in_current_month() -> u32 {
+    let now = Utc::now();
+    let next_month = if now.month() == 12 {
+        now.with_month(1)
+            .unwrap()
+            .with_year(now.year() + 1)
+            .unwrap()
+    } else {
+        now.with_month(now.month() + 1).unwrap()
+    };
+    (next_month - now).num_days() as u32 + now.day()
 }

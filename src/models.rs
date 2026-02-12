@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Usage data from GitHub API
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UsageData {
     pub time_period: TimePeriod,
     pub user: String,
@@ -10,6 +11,7 @@ pub struct UsageData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TimePeriod {
     pub year: i32,
     pub month: Option<u32>,
@@ -17,6 +19,7 @@ pub struct TimePeriod {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UsageItem {
     pub product: String,
     pub sku: String,

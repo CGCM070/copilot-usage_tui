@@ -6,14 +6,14 @@ mod themes;
 mod ui;
 mod waybar;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 
 use crate::api::{ApiClient, calculate_stats};
 use crate::cache::Cache;
 use crate::config::ConfigManager;
-use crate::models::{Config, Theme};
+use crate::models::Theme;
 
 #[derive(Parser)]
 #[command(name = "copilot-usage_cli")]
@@ -42,14 +42,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Configure settings
-    Config {
-        /// Edit configuration file
-        #[arg(short, long)]
-        edit: bool,
-    },
-    /// Reset configuration
+    /// Show current configuration
+    Config,
+    /// Reset and reconfigure settings
     Reset,
+    /// Reconfigure (alias for reset)
+    Reconfigure,
 }
 
 #[tokio::main]
@@ -90,14 +88,20 @@ async fn main() -> Result<()> {
 
     // Handle subcommands
     match cli.command {
-        Some(Commands::Config { edit: _ }) => {
+        Some(Commands::Config) => {
             println!("Configuration file: {}", config_manager.config_path().display());
-            println!("Token: {}...", &config.token[..10.min(config.token.len())]);
+            if config.token.is_empty() {
+                println!("Token: {}", "(not set)".red());
+            } else {
+                let visible_chars = 10.min(config.token.len());
+                println!("Token: {}...", &config.token[..visible_chars]);
+            }
             println!("Theme: {}", config.theme);
             println!("Cache TTL: {} minutes", config.cache_ttl_minutes);
             return Ok(());
         }
-        Some(Commands::Reset) => {
+        Some(Commands::Reset) | Some(Commands::Reconfigure) => {
+            println!("{}", "Reconfiguring...".yellow());
             config_manager.setup_interactive()?;
             return Ok(());
         }
@@ -122,17 +126,76 @@ async fn main() -> Result<()> {
             
             let api_client = ApiClient::new(config.token.clone())?;
             
-            // Validate token and get username
-            let username = api_client.validate_token().await?;
-            println!("Authenticated as: {}", username.cyan());
+            // Try to get username from API
+            let username = match api_client.get_authenticated_user().await {
+                Ok(user) => {
+                    println!("Authenticated as: {}", user.cyan());
+                    user
+                }
+                Err(_) => {
+                    // Fine-grained tokens don't have access to /user endpoint
+                    // Ask user for their GitHub username
+                    println!("\n{}", "Could not determine username from token.".yellow());
+                    println!("(Fine-grained tokens don't have access to the user endpoint)");
+                    println!();
+                    
+                    let username: String = dialoguer::Input::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                        .with_prompt("Enter your GitHub username")
+                        .interact_text()?;
+                    
+                    username
+                }
+            };
 
             // Fetch usage data
-            let data = api_client.fetch_usage(&username).await?;
-            
-            // Cache the data
-            cache.set(&data)?;
-            
-            data
+            match api_client.fetch_usage(&username).await {
+                Ok(data) => {
+                    // Cache the data
+                    cache.set(&data)?;
+                    data
+                }
+                Err(e) => {
+                    let err_str = format!("{}", e);
+                    
+                    if err_str.contains("403") {
+                        eprintln!("\n{}", "⚠️  API Access Denied! (403)".red().bold());
+                        eprintln!("{}", "Your token doesn't have permission to access billing data.".red());
+                        eprintln!();
+                        eprintln!("{}", "Make sure your token has:".yellow().bold());
+                        eprintln!("  • Account → Plan (Read) permission");
+                        eprintln!();
+                        eprintln!("{}", "Note: This is NOT 'Copilot Requests' permission!".yellow());
+                        eprintln!("{}", "You need the 'Plan' permission specifically.".yellow());
+                        eprintln!();
+                        eprintln!("To fix this:");
+                        eprintln!("  1. Go to https://github.com/settings/personal-access-tokens");
+                        eprintln!("  2. Find your token and click 'Edit'");
+                        eprintln!("  3. Under 'Account permissions', enable 'Plan' → Read-only");
+                        eprintln!("  4. Save the token");
+                        eprintln!();
+                        
+                        let should_reconfigure = dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                            .with_prompt("Reconfigure with correct token?")
+                            .default(true)
+                            .interact()?;
+                        
+                        if should_reconfigure {
+                            config_manager.setup_interactive()?;
+                        }
+                    } else if err_str.contains("404") {
+                        eprintln!("\n{}", "⚠️  Not Found (404)".red().bold());
+                        eprintln!("{}", "This could mean:".yellow());
+                        eprintln!("  1. The username '{}' doesn't exist", username);
+                        eprintln!("  2. You don't have GitHub Copilot Pro on a personal plan");
+                        eprintln!("  3. Your Copilot is managed through an organization");
+                        eprintln!();
+                    } else {
+                        eprintln!("\n{}", format!("Error: {}", e).red().bold());
+                    }
+                    
+                    std::process::exit(1);
+                }
+            }
         }
     };
 

@@ -39,12 +39,29 @@ La primera vez que ejecutes el programa, se iniciará el setup interactivo:
 copilot-usage_cli
 ```
 
-Te pedirá:
-1. **GitHub Personal Access Token**: Crea uno en https://github.com/settings/tokens/new
-   - Selecciona "Fine-grained tokens"
-   - Resource owner: Tu cuenta
-   - Permiso requerido: `Plan (Read)`
-2. **Tema**: Elige entre dark, light, dracula, nord, monokai, gruvbox
+### Crear el Personal Access Token
+
+1. Ve a: https://github.com/settings/personal-access-tokens/new
+2. **Token name**: Cualquier nombre (ej: "Copilot Usage CLI")
+3. **Resource owner**: Selecciona tu cuenta
+4. **Expiration**: Elige la duración que prefieras
+5. **Repository access**: "Public repositories" es suficiente
+6. **Account permissions** (IMPORTANTE):
+   - Busca **"Plan"** (NO "Copilot Requests")
+   - Selecciona **"Read-only"**
+7. Genera el token y cópialo
+
+**⚠️ NOTA**: El permiso necesario es **"Plan"**, no "Copilot Requests". Son diferentes permisos.
+
+### Seleccionar tema
+
+Después de introducir el token, elige tu tema preferido:
+- `dark` (por defecto)
+- `light`
+- `dracula`
+- `nord`
+- `monokai`
+- `gruvbox`
 
 La configuración se guarda en: `~/.config/copilot-usage_cli/config.toml`
 
@@ -69,6 +86,15 @@ copilot-usage_cli --cache-status
 ```bash
 copilot-usage_cli --theme nord
 ```
+
+### Reconfigurar (cambiar token)
+```bash
+copilot-usage_cli reconfigure
+# o
+copilot-usage_cli reset
+```
+
+Si hay un error de autenticación, el programa te preguntará automáticamente si quieres reconfigurar.
 
 ### Ver configuración
 ```bash

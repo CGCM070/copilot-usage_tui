@@ -42,10 +42,6 @@ impl ConfigManager {
         Ok(())
     }
 
-    pub fn exists(&self) -> bool {
-        self.config_path.exists()
-    }
-
     pub fn setup_interactive(&self) -> Result<Config> {
         use console::style;
         use dialoguer::{theme::ColorfulTheme, Input};
@@ -57,7 +53,7 @@ impl ConfigManager {
         println!("{}", style("=================================").cyan());
         println!();
         println!("{}", style("Please create a Personal Access Token:").dim());
-        println!("1. Go to: https://github.com/settings/tokens/new");
+        println!("1. Go to: https://github.com/settings/personal-access-tokens/new");
         println!("2. Select 'Fine-grained tokens'");
         println!("3. Resource owner: Your account");
         println!("4. Permission: Plan (Read)");

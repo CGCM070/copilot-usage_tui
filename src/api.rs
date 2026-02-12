@@ -1,46 +1,43 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
-use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue};
-use crate::models::{UsageData, UsageStats, UsageItem, ModelUsage};
+use chrono::{Datelike, TimeZone, Utc};
+use reqwest::header::HeaderMap;
+use crate::models::{UsageData, UsageStats, ModelUsage};
+
+const GITHUB_API_URL: &str = "https://api.github.com";
 
 pub struct ApiClient {
     client: reqwest::Client,
-    token: String,
-    base_url: String,
 }
 
 impl ApiClient {
     pub fn new(token: String) -> Result<Self> {
         let mut headers = HeaderMap::new();
         headers.insert(
-            ACCEPT,
-            HeaderValue::from_static("application/vnd.github+json"),
+            "Accept",
+            reqwest::header::HeaderValue::from_static("application/vnd.github+json"),
         );
         headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {}", token))?,
+            "Authorization",
+            reqwest::header::HeaderValue::from_str(&format!("Bearer {}", token))?,
         );
         headers.insert(
             "X-GitHub-Api-Version",
-            HeaderValue::from_static("2022-11-28"),
+            reqwest::header::HeaderValue::from_static("2022-11-28"),
         );
 
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .timeout(std::time::Duration::from_secs(30))
+            .user_agent("copilot-usage_cli/0.1.0")
             .build()?;
 
-        Ok(Self {
-            client,
-            token,
-            base_url: "https://api.github.com".to_string(),
-        })
+        Ok(Self { client })
     }
 
     pub async fn fetch_usage(&self, username: &str) -> Result<UsageData> {
         let url = format!(
             "{}/users/{}/settings/billing/premium_request/usage",
-            self.base_url, username
+            GITHUB_API_URL, username
         );
 
         let response = self
@@ -50,10 +47,26 @@ impl ApiClient {
             .await
             .context("Failed to send request to GitHub API")?;
 
-        if !response.status().is_success() {
-            let status = response.status();
+        let status = response.status();
+        
+        if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
-            anyhow::bail!("GitHub API error: {} - {}", status, text);
+            
+            if status == 403 {
+                anyhow::bail!(
+                    "Access Forbidden (403). Your token may lack the 'Plan' permission. \
+                    Please ensure you have enabled 'Plan' → Read-only in Account permissions."
+                );
+            } else if status == 404 {
+                anyhow::bail!(
+                    "Not Found (404). This could mean:\n\
+                    1. You don't have GitHub Copilot Pro on a personal plan\n\
+                    2. Your Copilot is managed through an organization\n\
+                    3. The billing API is not available for your account type"
+                );
+            } else {
+                anyhow::bail!("GitHub API error: {} - {}", status, text);
+            }
         }
 
         let data: UsageData = response
@@ -64,18 +77,20 @@ impl ApiClient {
         Ok(data)
     }
 
-    pub async fn validate_token(&self) -> Result<String> {
-        let url = format!("{}/user", self.base_url);
+    pub async fn get_authenticated_user(&self) -> Result<String> {
+        let url = format!("{}/user", GITHUB_API_URL);
 
         let response = self
             .client
             .get(&url)
             .send()
             .await
-            .context("Failed to validate token")?;
+            .context("Failed to get user info")?;
 
         if !response.status().is_success() {
-            anyhow::bail!("Invalid token or insufficient permissions");
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            anyhow::bail!("Failed to get user: {} - {}", status, text);
         }
 
         #[derive(serde::Deserialize)]
@@ -89,12 +104,13 @@ impl ApiClient {
 }
 
 pub fn calculate_stats(data: &UsageData) -> UsageStats {
-    let total_limit = 300.0; // GitHub Copilot Pro limit
+    const TOTAL_LIMIT: f64 = 300.0;
+    const COST_PER_REQUEST: f64 = 0.04;
     
-    let total_used: f64 = data.usage_items.iter().map(|item| item.net_quantity).sum();
-    let percentage = (total_used / total_limit) * 100.0;
+    let total_used: f64 = data.usage_items.iter().map(|item| item.gross_quantity).sum();
+    let total_billed: f64 = data.usage_items.iter().map(|item| item.net_quantity).sum();
+    let percentage = (total_used / TOTAL_LIMIT) * 100.0;
 
-    // Calculate reset date (first day of next month)
     let now = Utc::now();
     let (next_year, next_month) = if now.month() == 12 {
         (now.year() + 1, 1)
@@ -105,11 +121,9 @@ pub fn calculate_stats(data: &UsageData) -> UsageStats {
         .earliest()
         .expect("Invalid date");
 
-    // Group by model
     let mut model_map: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
     for item in &data.usage_items {
-        let count = model_map.entry(item.model.clone()).or_insert(0.0);
-        *count += item.net_quantity;
+        *model_map.entry(item.model.clone()).or_insert(0.0) += item.gross_quantity;
     }
 
     let mut models: Vec<ModelUsage> = model_map
@@ -117,23 +131,22 @@ pub fn calculate_stats(data: &UsageData) -> UsageStats {
         .map(|(name, used)| ModelUsage {
             name,
             used,
-            limit: total_limit,
-            percentage: (used / total_limit) * 100.0,
+            limit: TOTAL_LIMIT,
+            percentage: (used / TOTAL_LIMIT) * 100.0,
         })
         .collect();
 
     models.sort_by(|a, b| b.used.partial_cmp(&a.used).unwrap());
 
-    // Calculate estimated cost (overages only)
-    let estimated_cost = if total_used > total_limit {
-        (total_used - total_limit) * 0.04
+    let estimated_cost = if total_billed > 0.0 {
+        total_billed * COST_PER_REQUEST
     } else {
         0.0
     };
 
     UsageStats {
         total_used,
-        total_limit,
+        total_limit: TOTAL_LIMIT,
         percentage,
         reset_date,
         models,
