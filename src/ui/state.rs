@@ -7,6 +7,18 @@ pub enum AppState {
     ConfirmRefresh,
     ConfirmReconfigure,
     ShowHelp,
+    LoadingRefresh,
+    LoadingCache,
+    ShowCacheInfo(CacheInfo),
+    ShowError(String),
+}
+
+/// Información del cache para mostrar en UI
+#[derive(Debug, Clone, PartialEq)]
+pub struct CacheInfo {
+    pub last_updated: Option<String>,
+    pub is_fresh: bool,
+    pub ttl_minutes: u64,
 }
 
 /// Comandos disponibles en el menú
@@ -26,6 +38,7 @@ pub struct AppStateManager {
     pub commands: Vec<Command>,
     pub themes: Vec<&'static str>,
     pub action_taken: Option<String>,
+    pub spinner_state: usize,
 }
 
 impl AppStateManager {
@@ -69,6 +82,7 @@ impl AppStateManager {
             ],
             themes: vec!["dark", "light", "dracula", "nord", "monokai", "gruvbox"],
             action_taken: None,
+            spinner_state: 0,
         }
     }
 
@@ -118,6 +132,16 @@ impl AppStateManager {
 
     pub fn reset_scroll(&mut self) {
         self.model_scroll_offset = 0;
+    }
+
+    // Spinner animation
+    pub fn advance_spinner(&mut self) {
+        self.spinner_state = (self.spinner_state + 1) % 10;
+    }
+
+    pub fn get_spinner_char(&self) -> char {
+        const SPINNER: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        SPINNER[self.spinner_state]
     }
 }
 

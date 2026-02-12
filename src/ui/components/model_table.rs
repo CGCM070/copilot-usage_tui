@@ -136,7 +136,7 @@ fn render_table(
         ],
     )
     .header(
-        Row::new(vec!["", "Model", "Progress", " Usage", "   Count", ""]).style(
+        Row::new(vec!["", "Model", "Progress", " Usage", "  Count", ""]).style(
             Style::default()
                 .fg(colors.foreground)
                 .add_modifier(Modifier::BOLD),

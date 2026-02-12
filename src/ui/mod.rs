@@ -1,3 +1,4 @@
+pub mod async_handler;
 pub mod components;
 pub mod events;
 pub mod layout;
@@ -25,6 +26,9 @@ use self::components::*;
 use self::events::EventHandler;
 use self::layout::{centered_rect, dashboard_layout};
 use self::state::{AppState, AppStateManager};
+use self::async_handler::{AsyncHandler, AsyncResult};
+
+use std::time::Duration;
 
 /// Ejecuta la UI interactiva y retorna la acción seleccionada
 pub fn run_ui(stats: &UsageStats, theme: Theme) -> Result<Option<String>> {
@@ -54,18 +58,46 @@ pub fn run_ui(stats: &UsageStats, theme: Theme) -> Result<Option<String>> {
 
 fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
-    stats: &UsageStats,
+    initial_stats: &UsageStats,
     theme: Theme,
     app: &mut AppStateManager,
 ) -> io::Result<()> {
     let colors = ThemeColors::from_theme(theme);
+    let async_handler = AsyncHandler::new();
+    let mut stats = initial_stats.clone();
 
     loop {
-        terminal.draw(|f| render_ui(f, stats, &colors, app))?;
+        terminal.draw(|f| render_ui(f, &stats, &colors, app))?;
 
-        if let Ok(event) = event::read() {
-            if EventHandler::handle_event(app, event, stats.models.len()) {
-                return Ok(());
+        // Poll events con timeout (non-blocking) - cada 50ms para spinner rápido
+        if event::poll(Duration::from_millis(50))? {
+            if let Ok(evt) = event::read() {
+                if EventHandler::handle_event(app, evt, stats.models.len(), &async_handler) {
+                    return Ok(());
+                }
+            }
+        }
+
+        // Avanzar spinner si estamos en loading
+        if matches!(app.state, AppState::LoadingRefresh | AppState::LoadingCache) {
+            app.advance_spinner();
+        }
+
+        // Check si hay resultados async
+        if let Some(result) = async_handler.try_recv() {
+            match result {
+                AsyncResult::RefreshComplete(Ok(new_stats)) => {
+                    stats = new_stats;
+                    app.state = AppState::Dashboard;
+                }
+                AsyncResult::RefreshComplete(Err(e)) => {
+                    // Mostrar error en modal con stack trace completo
+                    let error_msg = format!("{:?}", e);
+                    app.state = AppState::ShowError(error_msg);
+                }
+                AsyncResult::CacheInfoReady(info) => {
+                    app.state = AppState::ShowCacheInfo(info);
+                }
             }
         }
     }
@@ -110,6 +142,20 @@ fn render_ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors, app: &AppS
             "Current config will be reset",
         ),
         AppState::ShowHelp => help_dialog::render(f, colors),
+        AppState::LoadingRefresh => loading_dialog::render(
+            f,
+            colors,
+            app.get_spinner_char(),
+            "Refreshing data from API...",
+        ),
+        AppState::LoadingCache => loading_dialog::render(
+            f,
+            colors,
+            app.get_spinner_char(),
+            "Loading cache info...",
+        ),
+        AppState::ShowCacheInfo(ref info) => cache_info_dialog::render(f, colors, info),
+        AppState::ShowError(ref msg) => error_dialog::render(f, colors, msg),
         _ => {}
     }
 }

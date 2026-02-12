@@ -92,35 +92,29 @@ async fn run_waybar_mode(force_refresh: bool) -> Result<()> {
 
 async fn run_interactive_mode(cli: Cli) -> Result<()> {
     let mut current_theme = get_initial_theme(&cli.theme)?;
-    let mut force_refresh = cli.refresh;
+    let force_refresh = cli.refresh;
+
+    // Fetch inicial
+    let stats = fetch_usage_data(force_refresh).await?;
 
     loop {
-        let stats = fetch_usage_data(force_refresh).await?;
-        force_refresh = false;
-
         match ui::run_ui(&stats, current_theme)? {
             Some(action) => {
                 match action.as_str() {
                     "quit" => break,
-                    "refresh" => {
-                        println!("{}", "🔄 Refreshing data...".cyan());
-                        force_refresh = true;
-                    }
-                    "cache" => {
-                        show_cache_status().await?;
-                        println!("\nPress Enter to continue...");
-                        let _ = std::io::stdin().read_line(&mut String::new());
-                    }
-                    cmd if cmd.starts_with("theme:") => {
-                        let theme_name = cmd.strip_prefix("theme:").unwrap();
+                    
+                    action if action.starts_with("theme:") => {
+                        let theme_name = action.strip_prefix("theme:").unwrap();
                         current_theme = Theme::from_str(theme_name);
                         save_theme_preference(theme_name).await?;
-                        println!("{} {}", "✓ Theme changed to:".green(), theme_name.cyan());
                     }
+                    
                     "reconfigure" => {
                         reconfigure().await?;
-                        force_refresh = true;
+                        // Después de reconfigurar, salimos y el usuario debe reiniciar
+                        break;
                     }
+                    
                     _ => {}
                 }
             }
@@ -169,10 +163,10 @@ async fn show_config() -> Result<()> {
 }
 
 async fn reconfigure() -> Result<()> {
-    println!("{}", "⚙️  Reconfiguring...".yellow());
+    println!("Reconfiguring...");
     let config_manager = ConfigManager::new()?;
     config_manager.setup_interactive()?;
-    println!("{}", "✓ Configuration updated!".green());
+    println!("Configuration updated!");
     Ok(())
 }
 
@@ -200,7 +194,7 @@ async fn fetch_usage_data(force_refresh: bool) -> Result<crate::models::UsageSta
     let config = match config_manager.load()? {
         Some(cfg) => cfg,
         None => {
-            println!("{}", "Welcome to GitHub Copilot Usage CLI!".cyan().bold());
+            println!("Welcome to GitHub Copilot Usage CLI!");
             config_manager.setup_interactive()?
         }
     };
@@ -219,7 +213,7 @@ async fn fetch_usage_data(force_refresh: bool) -> Result<crate::models::UsageSta
             let username = match api_client.get_authenticated_user().await {
                 Ok(user) => user,
                 Err(_) => {
-                    println!("\n{}", "Could not determine username from token.".yellow());
+                    println!("\nCould not determine username from token.");
                     dialoguer::Input::with_theme(&dialoguer::theme::ColorfulTheme::default())
                         .with_prompt("Enter your GitHub username")
                         .interact_text()?
@@ -246,10 +240,10 @@ async fn handle_api_error(e: &anyhow::Error, config_manager: &ConfigManager) -> 
     let err_str = format!("{}", e);
 
     if err_str.contains("403") {
-        eprintln!("\n{}", "⚠️  API Access Denied! (403)".red().bold());
-        eprintln!("{}", "Your token doesn't have permission to access billing data.".red());
+        eprintln!("\nAPI Access Denied! (403)");
+        eprintln!("Your token doesn't have permission to access billing data.");
         eprintln!();
-        eprintln!("{}", "Make sure your token has:".yellow().bold());
+        eprintln!("Make sure your token has:");
         eprintln!("  • Account → Plan (Read) permission");
         eprintln!();
 
@@ -262,8 +256,8 @@ async fn handle_api_error(e: &anyhow::Error, config_manager: &ConfigManager) -> 
             config_manager.setup_interactive()?;
         }
     } else if err_str.contains("404") {
-        eprintln!("\n{}", "⚠️  Not Found (404)".red().bold());
-        eprintln!("{}", "This could mean:".yellow());
+        eprintln!("\nNot Found (404)");
+        eprintln!("This could mean:");
         eprintln!("  1. User doesn't exist");
         eprintln!("  2. No GitHub Copilot Pro on personal plan");
         eprintln!("  3. Copilot managed through organization");
