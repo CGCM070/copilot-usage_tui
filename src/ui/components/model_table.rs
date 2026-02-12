@@ -88,6 +88,7 @@ fn render_table(
         .map(|model| {
             let percentage_str = format!("{:.1}%", model.percentage);
             let usage_str = format!("{:.0}/{:.0}", model.used, model.limit);
+            let display_name = model.name.strip_prefix("Auto: ").unwrap_or(&model.name);
 
             // Barra visual extendida (más ancha) con fondo
             let bar_width: usize = 60;
@@ -100,7 +101,7 @@ fn render_table(
             Row::new(vec![
                 Cell::from(""), // Left Spacer
                 Cell::from(Span::styled(
-                    format!("{}", model.name), // Removed manual margin in string
+                    format!("{}", display_name), // Removed manual margin in string
                     Style::default().fg(colors.foreground),
                 )),
                 Cell::from(Line::from(vec![
@@ -127,8 +128,8 @@ fn render_table(
         rows,
         [
             Constraint::Length(1),      // Left Spacer (Margin)
-            Constraint::Percentage(28), // Model (Reduced to close gap)
-            Constraint::Percentage(50), // Progress (Increased to fill space)
+            Constraint::Percentage(22), // Model (Reduced to 22%)
+            Constraint::Percentage(56), // Progress (Increased to 56%)
             Constraint::Percentage(10), // Usage
             Constraint::Percentage(10), // Count
             Constraint::Length(1),      // Right Spacer (Margin)
