@@ -73,7 +73,7 @@ fn run_app<B: Backend>(
 
 fn render_ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors, app: &AppStateManager) {
     // Área centrada principal (más compacta)
-    let centered_area = centered_rect(65, 85, f.area());
+    let centered_area = centered_rect(50, 85, f.area());
 
     // Layout principal
     let main_layout = Layout::default()

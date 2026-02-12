@@ -31,7 +31,7 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
         title_line,
         Line::from(vec![
             Span::styled(
-                format!("{}", Utc::now().format("%B %Y")),
+                format!("{}", Utc::now().format("%d %B %Y")),
                 Style::default().fg(colors.muted),
             ),
             Span::styled(" • ", Style::default().fg(colors.muted)),
