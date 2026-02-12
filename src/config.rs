@@ -79,10 +79,32 @@ impl ConfigManager {
         let theme_idx: usize = dialoguer::Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Select theme")
             .default(0)
-            .items(&["dark", "light", "dracula", "nord", "monokai", "gruvbox"])
+            .items(&[
+                "dark",
+                "dracula",
+                "nord",
+                "monokai",
+                "gruvbox",
+                "catppuccin",
+                "onedark",
+                "tokyonight",
+                "solarized",
+                "kanagawa",
+            ])
             .interact()?;
 
-        let themes = ["dark", "light", "dracula", "nord", "monokai", "gruvbox"];
+        let themes = [
+            "dark",
+            "dracula",
+            "nord",
+            "monokai",
+            "gruvbox",
+            "catppuccin",
+            "onedark",
+            "tokyonight",
+            "solarized",
+            "kanagawa",
+        ];
 
         let config = Config {
             token: token.trim().to_string(),

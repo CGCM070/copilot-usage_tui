@@ -110,21 +110,29 @@ pub struct WaybarOutput {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Theme {
     Dark,
-    Light,
     Dracula,
     Nord,
     Monokai,
     Gruvbox,
+    Catppuccin,
+    OneDark,
+    TokyoNight,
+    SolarizedDark,
+    Kanagawa,
 }
 
 impl Theme {
     pub fn from_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
-            "light" => Theme::Light,
             "dracula" => Theme::Dracula,
             "nord" => Theme::Nord,
             "monokai" => Theme::Monokai,
             "gruvbox" => Theme::Gruvbox,
+            "catppuccin" => Theme::Catppuccin,
+            "onedark" | "one_dark" | "one-dark" => Theme::OneDark,
+            "tokyonight" | "tokyo_night" | "tokyo-night" => Theme::TokyoNight,
+            "solarized" | "solarized_dark" | "solarized-dark" => Theme::SolarizedDark,
+            "kanagawa" => Theme::Kanagawa,
             _ => Theme::Dark,
         }
     }
@@ -132,11 +140,15 @@ impl Theme {
     pub fn as_str(&self) -> &'static str {
         match self {
             Theme::Dark => "dark",
-            Theme::Light => "light",
             Theme::Dracula => "dracula",
             Theme::Nord => "nord",
             Theme::Monokai => "monokai",
             Theme::Gruvbox => "gruvbox",
+            Theme::Catppuccin => "catppuccin",
+            Theme::OneDark => "onedark",
+            Theme::TokyoNight => "tokyonight",
+            Theme::SolarizedDark => "solarized",
+            Theme::Kanagawa => "kanagawa",
         }
     }
 }
