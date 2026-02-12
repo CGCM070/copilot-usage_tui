@@ -4,13 +4,13 @@ pub mod events;
 pub mod layout;
 pub mod state;
 
-use std::io;
+use std::io::{self, Write};
 
 use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode, size as terminal_size},
 };
 use ratatui::{
     Frame, Terminal,
@@ -42,8 +42,22 @@ fn format_error_debug(error: &anyhow::Error) -> String {
     format!("{:?}", error)
 }
 
+/// Fixed terminal size for TUI (cols, rows)
+const TUI_SIZE: (u16, u16) = (80, 25);
+
+/// Resize terminal window using ANSI escape sequence
+fn resize_terminal(cols: u16, rows: u16) {
+    // CSI 8 ; rows ; cols t - Resize window to rows x cols characters
+    print!("\x1b[8;{};{}t", rows, cols);
+    let _ = io::stdout().flush();
+}
+
 /// Ejecuta la UI interactiva y retorna la acción seleccionada
 pub fn run_ui(stats: &UsageStats, theme: Theme) -> Result<Option<String>> {
+    // Save original terminal size and resize to fixed dimensions
+    let original_size = terminal_size().ok();
+    resize_terminal(TUI_SIZE.0, TUI_SIZE.1);
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -60,6 +74,11 @@ pub fn run_ui(stats: &UsageStats, theme: Theme) -> Result<Option<String>> {
         DisableMouseCapture
     )?;
     terminal.show_cursor()?;
+
+    // Restore original terminal size
+    if let Some((cols, rows)) = original_size {
+        resize_terminal(cols, rows);
+    }
 
     if let Err(err) = res {
         eprintln!("{:?}", err);
@@ -79,7 +98,7 @@ fn run_app<B: Backend>(
     let mut stats = initial_stats.clone();
 
     loop {
-        terminal.draw(|f| render_ui(f, &stats, &colors, app))?;
+        terminal.draw(|f| render_ui(f, &stats, &colors, app, theme))?;
 
         // Poll events con timeout (non-blocking) - cada 50ms para spinner rápido
         if event::poll(Duration::from_millis(50))?
@@ -119,9 +138,9 @@ fn run_app<B: Backend>(
     }
 }
 
-fn render_ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors, app: &AppStateManager) {
-    // Área centrada principal (más compacta)
-    let centered_area = centered_rect(50, 85, f.area());
+fn render_ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors, app: &AppStateManager, theme: Theme) {
+    // With fixed terminal size, use almost full area (96% width, 96% height for small margins)
+    let centered_area = centered_rect(96, 96, f.area());
 
     // Layout principal
     let main_layout = Layout::default()
@@ -136,7 +155,7 @@ fn render_ui(f: &mut Frame, stats: &UsageStats, colors: &ThemeColors, app: &AppS
     let content_chunks = dashboard_layout(content_area, stats.models.len());
 
     // Renderizar componentes del dashboard
-    header::render(f, content_chunks[0], stats, colors);
+    header::render(f, content_chunks[0], stats, colors, theme);
     usage_overall::render(f, content_chunks[2], stats, colors);
     model_table::render(f, content_chunks[4], stats, colors, app);
     render_help_bar(f, help_bar_area, colors, app, stats.models.len());
