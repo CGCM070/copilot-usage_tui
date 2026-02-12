@@ -1,0 +1,32 @@
+[package]
+name = "copilot-usage_cli"
+version = "0.1.0"
+edition = "2024"
+authors = ["Cesar Castillo"]
+description = "GitHub Copilot usage tracker CLI"
+
+[dependencies]
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+dialoguer = "0.11"
+console = "0.15"
+
+# HTTP
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1.42", features = ["full"] }
+
+# Serialización
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+serde_json = "1.0"
+
+# UI Terminal
+ratatui = "0.29"
+crossterm = "0.28"
+
+# Utilidades
+chrono = { version = "0.4", features = ["serde"] }
+directories = "5.0"
+anyhow = "1.0"
+colored = "2.2"
+uuid = { version = "1.11", features = ["v4"] }

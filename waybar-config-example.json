@@ -1,0 +1,41 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 30,
+  "modules-left": ["custom/copilot", "hyprland/workspaces"],
+  "modules-center": ["clock"],
+  "modules-right": ["network", "battery", "tray"],
+  
+  "custom/copilot": {
+    "exec": "copilot-usage_cli --waybar",
+    "interval": 300,
+    "return-type": "json",
+    "format": " {}",
+    "tooltip": true
+  },
+  
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "on-click": "activate"
+  },
+  
+  "clock": {
+    "format": "{:%H:%M}",
+    "tooltip-format": "{:%Y-%m-%d}"
+  },
+  
+  "network": {
+    "format-wifi": "󰤨 {essid}",
+    "format-ethernet": "󰈀 {ipaddr}",
+    "format-disconnected": "󰤭"
+  },
+  
+  "battery": {
+    "format": "{icon} {capacity}%",
+    "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+  },
+  
+  "tray": {
+    "spacing": 10
+  }
+}
