@@ -9,7 +9,6 @@ pub struct ThemeColors {
     pub muted: Color,
     pub border: Color,
     pub bar_empty: Color,
-    pub bar_filled: Color,
 }
 
 impl ThemeColors {
@@ -33,7 +32,6 @@ impl ThemeColors {
             muted: Color::Rgb(98, 114, 164),
             border: Color::Rgb(68, 71, 90),
             bar_empty: Color::Rgb(40, 42, 54),
-            bar_filled: Color::Rgb(80, 250, 123),
         }
     }
 
@@ -46,7 +44,6 @@ impl ThemeColors {
             muted: Color::Rgb(128, 128, 128),
             border: Color::Rgb(200, 200, 200),
             bar_empty: Color::Rgb(220, 220, 220),
-            bar_filled: Color::Rgb(34, 139, 34),
         }
     }
 
@@ -59,7 +56,6 @@ impl ThemeColors {
             muted: Color::Rgb(98, 114, 164),
             border: Color::Rgb(68, 71, 90),
             bar_empty: Color::Rgb(68, 71, 90),
-            bar_filled: Color::Rgb(189, 147, 249),
         }
     }
 
@@ -72,7 +68,6 @@ impl ThemeColors {
             muted: Color::Rgb(76, 86, 106),
             border: Color::Rgb(76, 86, 106),
             bar_empty: Color::Rgb(59, 66, 82),
-            bar_filled: Color::Rgb(136, 192, 208),
         }
     }
 
@@ -85,7 +80,6 @@ impl ThemeColors {
             muted: Color::Rgb(117, 113, 94),
             border: Color::Rgb(73, 72, 62),
             bar_empty: Color::Rgb(73, 72, 62),
-            bar_filled: Color::Rgb(166, 226, 46),
         }
     }
 
@@ -98,7 +92,6 @@ impl ThemeColors {
             muted: Color::Rgb(146, 131, 116),
             border: Color::Rgb(102, 92, 84),
             bar_empty: Color::Rgb(60, 56, 54),
-            bar_filled: Color::Rgb(184, 187, 38),
         }
     }
 }

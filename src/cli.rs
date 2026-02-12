@@ -7,6 +7,7 @@ use crate::cache::Cache;
 use crate::config::ConfigManager;
 use crate::models::Theme;
 use crate::ui;
+use crate::waybar;
 
 #[derive(Parser)]
 #[command(name = "copilot-usage_cli")]
@@ -52,6 +53,11 @@ pub async fn run() -> Result<()> {
         return show_cache_status().await;
     }
 
+    // Modo Waybar
+    if cli.waybar {
+        return run_waybar_mode(cli.refresh).await;
+    }
+
     match cli.command {
         Some(Commands::Config) => return show_config().await,
         Some(Commands::Reset) | Some(Commands::Reconfigure) => return reconfigure().await,
@@ -60,6 +66,28 @@ pub async fn run() -> Result<()> {
 
     // Modo interactivo
     run_interactive_mode(cli).await
+}
+
+async fn run_waybar_mode(force_refresh: bool) -> Result<()> {
+    let config_manager = ConfigManager::new()?;
+    
+    // Check config first to avoid interactive setup prompts in JSON output
+    if config_manager.load()?.is_none() {
+        eprintln!("Configuration missing. Run interactively first.");
+        return Ok(());
+    }
+
+    match fetch_usage_data(force_refresh).await {
+        Ok(stats) => {
+            let config = config_manager.load()?.unwrap_or_default();
+            let output = waybar::generate_output(&stats, &config.waybar_format);
+            println!("{}", output);
+        }
+        Err(_) => {
+            // Error is already printed to stderr by fetch_usage_data
+        }
+    }
+    Ok(())
 }
 
 async fn run_interactive_mode(cli: Cli) -> Result<()> {

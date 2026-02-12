@@ -85,18 +85,20 @@ fn render_table(
     let rows: Vec<Row> = visible_models
         .iter()
         .map(|model| {
-            let percentage_str = format!("{:>6.1}%", model.percentage);
-            let usage_str = format!("{:>6.0}/{:.0}", model.used, model.limit);
+            let percentage_str = format!("{:.1}%", model.percentage);
+            let usage_str = format!("{:.0}/{:.0}", model.used, model.limit);
 
-            // Barra visual sin fondo
-            let bar_width = 15;
+            // Barra visual extendida (25 caracteres) con fondo
+            let bar_width: usize = 25;
             let filled = ((model.percentage / 100.0) * bar_width as f64) as usize;
+
+            // Revert to █ for filled part and ░ for empty part
             let bar = "█".repeat(filled);
-            let empty = "░".repeat(bar_width - filled);
+            let empty = "░".repeat(bar_width.saturating_sub(filled));
 
             Row::new(vec![
                 Cell::from(Span::styled(
-                    model.name.clone(),
+                    format!("  {}", model.name), // Margen izquierdo
                     Style::default().fg(colors.foreground),
                 )),
                 Cell::from(Line::from(vec![
@@ -107,10 +109,13 @@ fn render_table(
                     Span::styled(empty, Style::default().fg(colors.muted)),
                 ])),
                 Cell::from(Span::styled(
-                    percentage_str,
+                    format!("{:>8}", percentage_str),
                     Style::default().fg(get_usage_color(model.percentage, colors)),
                 )),
-                Cell::from(Span::styled(usage_str, Style::default().fg(colors.muted))),
+                Cell::from(Span::styled(
+                    format!("{:>10}", usage_str),
+                    Style::default().fg(colors.muted),
+                )),
             ])
         })
         .collect();
@@ -118,19 +123,20 @@ fn render_table(
     let table = Table::new(
         rows,
         [
-            Constraint::Percentage(35),
-            Constraint::Percentage(30),
-            Constraint::Percentage(15),
-            Constraint::Percentage(20),
+            Constraint::Percentage(30), // Model
+            Constraint::Percentage(50), // Progress (más ancho)
+            Constraint::Percentage(12), // Usage
+            Constraint::Percentage(13), // Count
         ],
     )
     .header(
-        Row::new(vec!["Model", "Progress", "Usage", "Count"]).style(
+        Row::new(vec!["  Model", "Progress", "  Usage", "  Count"]).style(
             Style::default()
                 .fg(colors.foreground)
                 .add_modifier(Modifier::BOLD),
         ),
-    );
+    )
+    .column_spacing(1);
 
     f.render_widget(table, area);
 }

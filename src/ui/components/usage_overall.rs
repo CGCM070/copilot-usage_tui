@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Gauge, Paragraph},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
@@ -29,14 +29,16 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
+            Constraint::Length(1), // Requests Label
+            Constraint::Length(1), // Requests Bar
+            Constraint::Length(1), // Spacer
+            Constraint::Length(1), // Month Label
+            Constraint::Length(1), // Month Bar
         ])
         .margin(1)
         .split(inner);
 
-    // Uso actual
+    // 1. Requests Label
     let usage_text = Paragraph::new(Line::from(vec![
         Span::styled("Requests: ", Style::default().fg(colors.muted)),
         Span::styled(
@@ -52,21 +54,30 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     ]));
     f.render_widget(usage_text, layout[0]);
 
-    // Barra de progreso
-    let gauge = Gauge::default()
-        .gauge_style(
-            Style::default()
-                .fg(get_usage_color(stats.percentage, colors))
-                .bg(colors.bar_empty),
-        )
-        .percent(stats.percentage as u16)
-        .label("");
-    f.render_widget(gauge, layout[1]);
+    // 2. Requests Bar (Custom Text-based, no background)
+    let bar_width = layout[1].width as usize;
+    let filled_len = ((stats.percentage / 100.0) * bar_width as f64) as usize;
+    let filled_len = filled_len.min(bar_width);
 
-    // Progreso del mes
+    let filled_str = "█".repeat(filled_len);
+    // Use "░" for the empty part to match the requested "gray box" style
+    let empty_str = "░".repeat(bar_width.saturating_sub(filled_len));
+
+    let bar_text = Paragraph::new(Line::from(vec![
+        Span::styled(
+            filled_str,
+            Style::default().fg(get_usage_color(stats.percentage, colors)),
+        ),
+        Span::styled(empty_str, Style::default().fg(colors.muted)),
+    ]));
+    f.render_widget(bar_text, layout[1]);
+
+    // 3. Spacer (Empty)
+
+    // 4. Month Label
     let days_in_month = days_in_current_month();
-    let current_day = Utc::now().day() as f64;
-    let month_progress = (current_day / days_in_month as f64) * 100.0;
+    let current_day = Utc::now().day();
+    let month_progress = (current_day as f64 / days_in_month as f64) * 100.0;
 
     let month_text = Paragraph::new(Line::from(vec![
         Span::styled("Month: ", Style::default().fg(colors.muted)),
@@ -75,7 +86,36 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
             Style::default().fg(colors.muted),
         ),
     ]));
-    f.render_widget(month_text, layout[2]);
+    f.render_widget(month_text, layout[3]);
+
+    // 5. Month Indicator (Style: ......|......)
+    let month_bar_width = layout[4].width as usize;
+    let pipe_pos =
+        ((current_day as f64 / days_in_month as f64) * (month_bar_width as f64 - 1.0)) as usize;
+
+    let mut month_spans = Vec::new();
+    if pipe_pos > 0 {
+        month_spans.push(Span::styled(
+            ".".repeat(pipe_pos),
+            Style::default().fg(colors.muted),
+        ));
+    }
+    month_spans.push(Span::styled(
+        "|",
+        Style::default()
+            .fg(colors.foreground)
+            .add_modifier(Modifier::BOLD),
+    ));
+    if pipe_pos < month_bar_width - 1 {
+        // Use darker dots for future, or just muted.
+        month_spans.push(Span::styled(
+            ".".repeat(month_bar_width.saturating_sub(pipe_pos + 1)),
+            Style::default().fg(colors.bar_empty),
+        ));
+    }
+
+    let month_bar = Paragraph::new(Line::from(month_spans));
+    f.render_widget(month_bar, layout[4]);
 }
 
 fn days_in_current_month() -> u32 {
