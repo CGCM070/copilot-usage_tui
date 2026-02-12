@@ -12,6 +12,7 @@ use crate::ui::state::CacheInfo;
 pub enum AsyncResult {
     RefreshComplete(Result<UsageStats>),
     CacheInfoReady(CacheInfo),
+    ThemeSaved(Result<()>),
 }
 
 /// Maneja operaciones asíncronas en background
@@ -48,6 +49,16 @@ impl AsyncHandler {
         tokio::spawn(async move {
             let info = Self::do_cache_info().await;
             let _ = sender.send(AsyncResult::CacheInfoReady(info));
+        });
+    }
+
+    /// Spawn task para guardar tema en config (background, no bloquea UI)
+    pub fn spawn_save_theme(&self, theme_name: String) {
+        let sender = self.sender.clone();
+
+        tokio::spawn(async move {
+            let result = Self::do_save_theme(&theme_name).await;
+            let _ = sender.send(AsyncResult::ThemeSaved(result));
         });
     }
 
@@ -111,5 +122,15 @@ impl AsyncHandler {
             is_fresh: false,
             ttl_minutes: 5,
         }
+    }
+
+    /// Implementación real de guardar tema
+    async fn do_save_theme(theme_name: &str) -> Result<()> {
+        let config_manager = ConfigManager::new()?;
+        if let Some(mut config) = config_manager.load()? {
+            config.theme = theme_name.to_string();
+            config_manager.save(&config)?;
+        }
+        Ok(())
     }
 }

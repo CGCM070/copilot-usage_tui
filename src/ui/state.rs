@@ -1,3 +1,5 @@
+use crate::models::Theme;
+
 /// Estados de la aplicación
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppState {
@@ -45,6 +47,8 @@ pub struct AppStateManager {
     pub themes: Vec<&'static str>,
     pub action_taken: Option<String>,
     pub spinner_state: usize,
+    /// Theme change pending to be applied (for instant in-place theme switching)
+    pub pending_theme_change: Option<Theme>,
 }
 
 impl AppStateManager {
@@ -102,6 +106,7 @@ impl AppStateManager {
             ],
             action_taken: None,
             spinner_state: 0,
+            pending_theme_change: None,
         }
     }
 

@@ -1,5 +1,7 @@
 use crossterm::event::{Event, KeyCode, KeyEventKind};
 
+use crate::models::Theme;
+
 use super::async_handler::AsyncHandler;
 use super::state::{AppState, AppStateManager};
 
@@ -115,9 +117,11 @@ impl EventHandler {
                 app.previous_theme();
             }
             KeyCode::Enter => {
-                let theme = app.themes[app.selected_theme];
-                app.action_taken = Some(format!("theme:{}", theme));
-                return true;
+                // Apply theme change in-place (don't exit TUI)
+                let theme_name = app.themes[app.selected_theme];
+                let new_theme = Theme::from_str(theme_name);
+                app.pending_theme_change = Some(new_theme);
+                app.state = AppState::Dashboard;
             }
             _ => {}
         }

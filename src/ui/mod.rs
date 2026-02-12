@@ -71,14 +71,23 @@ pub fn run_ui(stats: &UsageStats, theme: Theme) -> Result<Option<String>> {
 fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     initial_stats: &UsageStats,
-    theme: Theme,
+    initial_theme: Theme,
     app: &mut AppStateManager,
 ) -> io::Result<()> {
-    let colors = ThemeColors::from_theme(theme);
+    let mut theme = initial_theme;
+    let mut colors = ThemeColors::from_theme(theme);
     let async_handler = AsyncHandler::new();
     let mut stats = initial_stats.clone();
 
     loop {
+        // Check for pending theme change (instant, in-place)
+        if let Some(new_theme) = app.pending_theme_change.take() {
+            theme = new_theme;
+            colors = ThemeColors::from_theme(theme);
+            // Save to config in background (non-blocking)
+            async_handler.spawn_save_theme(theme.as_str().to_string());
+        }
+
         terminal.draw(|f| render_ui(f, &stats, &colors, app, theme))?;
 
         // Poll events con timeout (non-blocking) - cada 50ms para spinner rápido
@@ -113,6 +122,13 @@ fn run_app<B: Backend>(
                 }
                 AsyncResult::CacheInfoReady(info) => {
                     app.state = AppState::ShowCacheInfo(info);
+                }
+                AsyncResult::ThemeSaved(Ok(())) => {
+                    // Theme saved successfully, nothing to do (already applied)
+                }
+                AsyncResult::ThemeSaved(Err(_)) => {
+                    // Silently ignore save errors - theme is already applied visually
+                    // User can still use the app, config will be out of sync
                 }
             }
         }
@@ -208,12 +224,16 @@ fn render_help_bar(
     f.render_widget(help, area);
 }
 
+/// Colores constantes para warning/error (universales)
+const WARNING_COLOR: Color = Color::Rgb(255, 184, 108);
+const ERROR_COLOR: Color = Color::Rgb(255, 85, 85);
+
 /// Obtiene el color según el porcentaje de uso
 fn get_usage_color(percentage: f64, colors: &ThemeColors) -> Color {
     if percentage >= 90.0 {
-        colors.error
+        ERROR_COLOR
     } else if percentage >= 75.0 {
-        colors.warning
+        WARNING_COLOR
     } else {
         colors.success
     }
