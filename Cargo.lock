@@ -238,7 +238,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "copilot-usage_cli"
+name = "copilot-usage"
 version = "0.1.0"
 dependencies = [
  "anyhow",

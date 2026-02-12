@@ -1,4 +1,4 @@
-# copilot-usage_cli
+# copilot-usage
 
 GitHub Copilot usage tracker CLI - Una herramienta para visualizar el uso de GitHub Copilot Pro desde la terminal.
 
@@ -18,14 +18,14 @@ GitHub Copilot usage tracker CLI - Una herramienta para visualizar el uso de Git
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/tu-usuario/copilot-usage_cli.git
-cd copilot-usage_cli
+git clone https://github.com/tu-usuario/copilot-usage.git
+cd copilot-usage
 
 # Compilar en modo release
 cargo build --release
 
 # Instalar en ~/.local/bin
-cp target/release/copilot-usage_cli ~/.local/bin/
+cp target/release/copilot-usage ~/.local/bin/
 
 # O instalar globalmente
 cargo install --path .
@@ -36,7 +36,7 @@ cargo install --path .
 La primera vez que ejecutes el programa, se iniciará el setup interactivo:
 
 ```bash
-copilot-usage_cli
+copilot-usage
 ```
 
 ### Crear el Personal Access Token
@@ -63,47 +63,47 @@ Después de introducir el token, elige tu tema preferido:
 - `monokai`
 - `gruvbox`
 
-La configuración se guarda en: `~/.config/copilot-usage_cli/config.toml`
+La configuración se guarda en: `~/.config/copilot-usage/config.toml`
 
 ## Uso
 
 ### Ver dashboard
 ```bash
-copilot-usage_cli
+copilot-usage
 ```
 
 ### Forzar actualización (ignorar caché)
 ```bash
-copilot-usage_cli --refresh
+copilot-usage --refresh
 ```
 
 ### Ver estado del caché
 ```bash
-copilot-usage_cli --cache-status
+copilot-usage --cache-status
 ```
 
 ### Cambiar tema temporalmente
 ```bash
-copilot-usage_cli --theme nord
+copilot-usage --theme nord
 ```
 
 ### Reconfigurar (cambiar token)
 ```bash
-copilot-usage_cli reconfigure
+copilot-usage reconfigure
 # o
-copilot-usage_cli reset
+copilot-usage reset
 ```
 
 Si hay un error de autenticación, el programa te preguntará automáticamente si quieres reconfigurar.
 
 ### Ver configuración
 ```bash
-copilot-usage_cli config
+copilot-usage config
 ```
 
 ### Resetear configuración
 ```bash
-copilot-usage_cli reset
+copilot-usage reset
 ```
 
 ## Integración con Waybar
@@ -112,7 +112,7 @@ Para mostrar el uso de Copilot en Waybar, añade esto a tu configuración de Way
 
 ```json
 "custom/copilot": {
-  "exec": "copilot-usage_cli --waybar",
+  "exec": "copilot-usage --waybar",
   "interval": 300,
   "return-type": "json",
   "format": " {}",
@@ -150,16 +150,16 @@ Y añade los estilos CSS en `~/.config/waybar/style.css`:
 ## Estructura de archivos
 
 ```
-~/.config/copilot-usage_cli/
+~/.config/copilot-usage/
 └── config.toml          # Configuración
 
-~/.cache/copilot-usage_cli/
+~/.cache/copilot-usage/
 └── usage.json            # Cache de datos
 ```
 
 ## Configuración manual
 
-Ejemplo de `~/.config/copilot-usage_cli/config.toml`:
+Ejemplo de `~/.config/copilot-usage/config.toml`:
 
 ```toml
 token = "ghp_tu_token_aqui"

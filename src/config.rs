@@ -10,7 +10,7 @@ pub struct ConfigManager {
 
 impl ConfigManager {
     pub fn new() -> Result<Self> {
-        let proj_dirs = ProjectDirs::from("com", "copilot-usage", "copilot-usage_cli")
+        let proj_dirs = ProjectDirs::from("com", "copilot-usage", "copilot-usage")
             .context("Failed to determine config directory")?;
 
         let config_dir = proj_dirs.config_dir();

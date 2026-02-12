@@ -7,10 +7,10 @@
   "modules-right": ["network", "battery", "tray"],
   
   "custom/copilot": {
-    "exec": "copilot-usage_cli --waybar",
+    "exec": "copilot-usage --waybar",
     "interval": 300,
     "return-type": "json",
-    "format": " {}",
+    "format": " {}",
     "tooltip": true
   },
   

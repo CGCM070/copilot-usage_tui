@@ -10,7 +10,7 @@ use crate::ui;
 use crate::waybar;
 
 #[derive(Parser)]
-#[command(name = "copilot-usage_cli")]
+#[command(name = "copilot-usage")]
 #[command(about = "GitHub Copilot Usage Tracker CLI")]
 #[command(version = "0.1.0")]
 pub struct Cli {

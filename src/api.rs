@@ -28,7 +28,7 @@ impl ApiClient {
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .timeout(std::time::Duration::from_secs(30))
-            .user_agent("copilot-usage_cli/0.1.0")
+            .user_agent("copilot-usage/0.1.0")
             .build()?;
 
         Ok(Self { client })

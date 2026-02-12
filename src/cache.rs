@@ -12,7 +12,7 @@ pub struct Cache {
 
 impl Cache {
     pub fn new(ttl_minutes: u64) -> Result<Self> {
-        let proj_dirs = ProjectDirs::from("com", "copilot-usage", "copilot-usage_cli")
+        let proj_dirs = ProjectDirs::from("com", "copilot-usage", "copilot-usage")
             .context("Failed to determine cache directory")?;
 
         let cache_dir = proj_dirs.cache_dir();

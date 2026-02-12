@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Installation script for copilot-usage_cli
+# Installation script for copilot-usage
 
 set -e
 
-echo "Installing copilot-usage_cli..."
+echo "Installing copilot-usage..."
 
 # Check if cargo is installed
 if ! command -v cargo &> /dev/null; then
@@ -19,7 +19,7 @@ cargo build --release
 
 # Install to ~/.local/bin
 mkdir -p ~/.local/bin
-cp target/release/copilot-usage_cli ~/.local/bin/
+cp target/release/copilot-usage ~/.local/bin/
 
 # Check if ~/.local/bin is in PATH
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
@@ -32,11 +32,11 @@ fi
 
 echo "Installation complete!"
 echo ""
-echo "Run 'copilot-usage_cli' to start the setup wizard."
+echo "Run 'copilot-usage' to start the setup wizard."
 echo ""
 echo "For Waybar integration, add this to your Waybar config:"
 echo '  "custom/copilot": {'
-echo '    "exec": "copilot-usage_cli --waybar",'
+echo '    "exec": "copilot-usage --waybar",'
 echo '    "interval": 300,'
 echo '    "return-type": "json",'
 echo '    "format": " {}",'
