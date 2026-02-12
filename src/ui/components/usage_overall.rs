@@ -44,13 +44,14 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(1), // Top Padding
             Constraint::Length(1), // Requests Label
             Constraint::Length(1), // Requests Bar
             Constraint::Length(1), // Spacer
             Constraint::Length(1), // Month Label
             Constraint::Length(1), // Month Bar
         ])
-        .margin(1)
+        .horizontal_margin(1)
         .split(inner);
 
     // 1. Requests Label
@@ -67,11 +68,11 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
             Style::default().fg(colors.muted),
         ),
     ]));
-    f.render_widget(usage_text, layout[0]);
+    f.render_widget(usage_text, layout[1]);
 
     // 2. Requests Bar - Segmented gradient (green -> orange -> red)
     // Zone thresholds: 0-75% = success, 75-90% = warning, 90-100% = error
-    let bar_width = layout[1].width as usize;
+    let bar_width = layout[2].width as usize;
     let filled_len = ((stats.percentage / 100.0) * bar_width as f64) as usize;
     let filled_len = filled_len.min(bar_width);
 
@@ -126,7 +127,7 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     }
 
     let bar_text = Paragraph::new(Line::from(bar_spans));
-    f.render_widget(bar_text, layout[1]);
+    f.render_widget(bar_text, layout[2]);
 
     // 3. Spacer (Empty)
 
@@ -142,11 +143,11 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
             Style::default().fg(colors.muted),
         ),
     ]));
-    f.render_widget(month_text, layout[3]);
+    f.render_widget(month_text, layout[4]);
 
     // 5. Month Indicator with gradient colors
     // Colors show proximity to reset: muted -> warning -> error -> success (reset!)
-    let month_bar_width = layout[4].width as usize;
+    let month_bar_width = layout[5].width as usize;
     let pipe_pos =
         ((current_day as f64 / days_in_month as f64) * (month_bar_width as f64 - 1.0)) as usize;
 
@@ -176,7 +177,7 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     }
 
     let month_bar = Paragraph::new(Line::from(month_spans));
-    f.render_widget(month_bar, layout[4]);
+    f.render_widget(month_bar, layout[5]);
 }
 
 fn days_in_current_month() -> u32 {

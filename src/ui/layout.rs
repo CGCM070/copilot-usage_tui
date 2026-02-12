@@ -37,7 +37,7 @@ pub fn dashboard_layout(area: Rect, model_count: usize) -> Vec<Rect> {
         .constraints([
             Constraint::Length(3),            // Header
             Constraint::Length(0),            // Spacing (Reduced to 0)
-            Constraint::Length(10),           // Overall usage
+            Constraint::Length(8),            // Overall usage
             Constraint::Length(0),            // Spacing (Reduced to 0)
             Constraint::Length(model_height), // Model usage (Fixed height)
         ])
