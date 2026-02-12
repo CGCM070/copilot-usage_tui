@@ -107,7 +107,10 @@ fn render_table(
             if success_chars > 0 {
                 bar_spans.push(Span::styled(
                     "█".repeat(success_chars),
-                    Style::default().fg(colors.success),
+                    Style::default()
+                        .fg(colors.success)
+                        .add_modifier(Modifier::UNDERLINED)
+                        .underline_color(colors.border),
                 ));
             }
 
@@ -119,7 +122,10 @@ fn render_table(
                 if warning_chars > 0 {
                     bar_spans.push(Span::styled(
                         "█".repeat(warning_chars),
-                        Style::default().fg(Color::Rgb(255, 184, 108)),
+                        Style::default()
+                            .fg(Color::Rgb(255, 184, 108))
+                            .add_modifier(Modifier::UNDERLINED)
+                            .underline_color(colors.border),
                     ));
                 }
             }
@@ -130,7 +136,10 @@ fn render_table(
                 if error_chars > 0 {
                     bar_spans.push(Span::styled(
                         "█".repeat(error_chars),
-                        Style::default().fg(Color::Rgb(255, 85, 85)),
+                        Style::default()
+                            .fg(Color::Rgb(255, 85, 85))
+                            .add_modifier(Modifier::UNDERLINED)
+                            .underline_color(colors.border),
                     ));
                 }
             }
@@ -140,7 +149,10 @@ fn render_table(
             if empty_len > 0 {
                 bar_spans.push(Span::styled(
                     "░".repeat(empty_len),
-                    Style::default().fg(colors.muted),
+                    Style::default()
+                        .fg(colors.muted)
+                        .add_modifier(Modifier::UNDERLINED)
+                        .underline_color(colors.border),
                 ));
             }
 

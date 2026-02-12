@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::Local;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -55,7 +55,7 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     // Left side: date, reset, username
     let date_info = Paragraph::new(Line::from(vec![
         Span::styled(
-            format!("{}", Utc::now().format("%d %B %Y")),
+            format!("{}", Local::now().format("%d %B %Y")),
             Style::default().fg(colors.muted),
         ),
         Span::styled(" • ", Style::default().fg(colors.muted)),
