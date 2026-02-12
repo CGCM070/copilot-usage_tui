@@ -1,16 +1,30 @@
 use chrono::{Datelike, Utc};
 use ratatui::{
-    Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
+    Frame,
 };
 
 use crate::models::UsageStats;
 use crate::themes::ThemeColors;
 
 use super::super::get_usage_color;
+
+/// Get color for a month progress dot based on its position
+/// Colors indicate proximity to reset date (end of month)
+fn get_month_dot_color(position_percent: f64, colors: &ThemeColors) -> Color {
+    if position_percent >= 95.0 {
+        colors.success // Green - Reset imminent! New requests coming!
+    } else if position_percent >= 85.0 {
+        colors.error // Red - Very close to reset
+    } else if position_percent >= 70.0 {
+        colors.warning // Yellow - Getting closer
+    } else {
+        colors.muted // Gray - Normal passed days
+    }
+}
 
 pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColors) {
     let block = Block::default()
@@ -89,26 +103,31 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     ]));
     f.render_widget(month_text, layout[3]);
 
-    // 5. Month Indicator (Style: ......|......)
+    // 5. Month Indicator with gradient colors
+    // Colors show proximity to reset: muted -> warning -> error -> success (reset!)
     let month_bar_width = layout[4].width as usize;
     let pipe_pos =
         ((current_day as f64 / days_in_month as f64) * (month_bar_width as f64 - 1.0)) as usize;
 
-    let mut month_spans = Vec::new();
-    if pipe_pos > 0 {
-        month_spans.push(Span::styled(
-            ".".repeat(pipe_pos),
-            Style::default().fg(colors.muted),
-        ));
+    let mut month_spans: Vec<Span> = Vec::new();
+
+    // Passed days - colored based on position in month
+    for i in 0..pipe_pos {
+        let position_percent = (i as f64 / (month_bar_width as f64 - 1.0)) * 100.0;
+        let dot_color = get_month_dot_color(position_percent, colors);
+        month_spans.push(Span::styled(".", Style::default().fg(dot_color)));
     }
+
+    // Current position indicator - always success (green) to indicate "we're here, reset coming"
     month_spans.push(Span::styled(
         "|",
         Style::default()
-            .fg(colors.foreground)
+            .fg(colors.success)
             .add_modifier(Modifier::BOLD),
     ));
+
+    // Future days - use bar_empty (dark) color
     if pipe_pos < month_bar_width - 1 {
-        // Use darker dots for future, or just muted.
         month_spans.push(Span::styled(
             ".".repeat(month_bar_width.saturating_sub(pipe_pos + 1)),
             Style::default().fg(colors.bar_empty),
