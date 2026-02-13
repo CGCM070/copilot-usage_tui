@@ -6,12 +6,14 @@ use ratatui::{
 };
 
 use crate::themes::ThemeColors;
-use crate::ui::layout::{centered_rect, POPUP_HEIGHT, POPUP_WIDTH};
+use crate::ui::layout::POPUP_WIDTH;
 use crate::ui::state::CacheInfo;
 
 /// Renderiza un diálogo con información del cache
 pub fn render(f: &mut Frame, colors: &ThemeColors, info: &CacheInfo) {
-    let area = centered_rect(POPUP_WIDTH, POPUP_HEIGHT, f.area());
+    // Usar altura fija en lugar de porcentaje para evitar problemas en pantallas pequeñas
+    let height = 12;
+    let area = centered_rect_fixed_height(POPUP_WIDTH, height, f.area());
 
     let block = Block::default()
         .title(" Cache Status ")
@@ -27,10 +29,11 @@ pub fn render(f: &mut Frame, colors: &ThemeColors, info: &CacheInfo) {
             Constraint::Length(1), // Status
             Constraint::Length(1), // Last updated
             Constraint::Length(1), // TTL
-            Constraint::Length(1), // Espaciado
+            Constraint::Length(2), // Espaciado
             Constraint::Length(1), // Hint
         ])
-        .margin(2)
+        .vertical_margin(1)
+        .horizontal_margin(2)
         .split(inner);
 
     // Status con color
@@ -62,8 +65,37 @@ pub fn render(f: &mut Frame, colors: &ThemeColors, info: &CacheInfo) {
     // Render
     f.render_widget(Clear, area);
     f.render_widget(block, area);
-    f.render_widget(status, layout[0]);
-    f.render_widget(last_updated, layout[1]);
-    f.render_widget(ttl, layout[2]);
-    f.render_widget(hint, layout[4]);
+
+    // Safety check: ensure layout has enough chunks (in case vertical_margin reduces space too much)
+    if layout.len() >= 5 {
+        f.render_widget(status, layout[0]);
+        f.render_widget(last_updated, layout[1]);
+        f.render_widget(ttl, layout[2]);
+        f.render_widget(hint, layout[4]);
+    }
+}
+
+/// Helper local para centrar con altura fija
+fn centered_rect_fixed_height(
+    percent_x: u16,
+    height: u16,
+    r: ratatui::layout::Rect,
+) -> ratatui::layout::Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(height),
+            Constraint::Fill(1),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }
