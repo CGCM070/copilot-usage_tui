@@ -3,33 +3,29 @@
 #custom-copilot {
   padding: 0 10px;
   margin: 0 5px;
-  color: #a6e3a1; /* Green - low usage */
-  background-color: transparent;
+  color: #1aba0c; /* Green - low usage */
   border-radius: 4px;
 }
 
 /* Critical - >90% usage */
 #custom-copilot.copilot-critical {
-  color: #f38ba8;
-  background-color: rgba(243, 139, 168, 0.1);
+  color: #ed0101;
 }
 
 /* Warning - >75% usage */
 #custom-copilot.copilot-warning {
-  color: #fab387;
-  background-color: rgba(250, 179, 135, 0.1);
+  color: #d4bd09;
 }
 
 /* Normal - >50% usage */
 #custom-copilot.copilot-normal {
-  color: #f9e2af;
-  background-color: rgba(249, 226, 175, 0.1);
+  color: #4cc605;
+
 }
 
 /* Low - <50% usage */
 #custom-copilot.copilot-low {
-  color: #a6e3a1;
-  background-color: rgba(166, 227, 161, 0.1);
+  color: #1aba0c;
 }
 
 /* Hover effect */

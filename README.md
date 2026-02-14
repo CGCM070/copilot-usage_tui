@@ -1,133 +1,160 @@
-# copilot-usage
+# Copilot Usage
 
-GitHub Copilot usage tracker CLI - Una herramienta para visualizar el uso de GitHub Copilot Pro desde la terminal.
+[![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Linux-success.svg)](https://kernel.org/)
 
-![Screenshot](screenshot.png)
+GitHub Copilot usage tracker CLI - Terminal-based tool written in Rust to visualize GitHub Copilot Pro usage with an interactive dashboard, multiple themes, and Waybar integration for Hyprland.
 
-## Características
+**Tested on Linux** - specifically designed and tested on Linux systems with Hyprland window manager.
 
-- **Dashboard interactivo** con barras de progreso y estadísticas por modelo
-- **Múltiples temas**: dark, light, dracula, nord, monokai, gruvbox
-- **Integración con Waybar** para mostrar el uso en la barra de Hyprland
-- **Cacheo inteligente** con TTL configurable (por defecto 5 minutos)
-- **Setup interactivo** para la primera configuración
+![Dashboard Layout](assets/layout.png)
 
-## Instalación
+## Features
 
-### Compilar desde el código fuente
+- **Interactive Dashboard** with segmented progress bars (green → orange → red)
+- **9 Visual Themes**: dark, nord, monokai, gruvbox, catppuccin, onedark, tokyonight, solarized, kanagawa
+- **Async Architecture** with smooth animations (20 FPS)
+- **Smart Caching** with configurable TTL (default: 5 minutes)
+- **Interactive Modals**: theme selector, command menu, help, cache info
+- **Waybar Integration** for Hyprland status bar (tested on Hyprland)
+- **Interactive Setup** for first-time configuration
+
+## Available Themes
+
+![Themes Showcase](assets/themes.png)
+
+## Installation
+
+### Option 1: Installation Script (Recommended)
 
 ```bash
-# Clonar el repositorio
 git clone https://github.com/tu-usuario/copilot-usage.git
 cd copilot-usage
+./install.sh
+```
 
-# Compilar en modo release
+### Option 2: Quick Install (Development)
+
+```bash
+./quick-install.sh
+```
+
+### Option 3: Manual with Cargo
+
+```bash
+# Compile and install
+cargo install --path . --force
+
+# Or traditional
 cargo build --release
-
-# Instalar en ~/.local/bin
 cp target/release/copilot-usage ~/.local/bin/
-
-# O instalar globalmente
-cargo install --path .
 ```
 
-## Configuración inicial
+## Initial Setup
 
-La primera vez que ejecutes el programa, se iniciará el setup interactivo:
+The first time you run the program, an interactive setup will start:
 
 ```bash
 copilot-usage
 ```
 
-### Crear el Personal Access Token
+### Create Personal Access Token
 
-1. Ve a: https://github.com/settings/personal-access-tokens/new
-2. **Token name**: Cualquier nombre (ej: "Copilot Usage CLI")
-3. **Resource owner**: Selecciona tu cuenta
-4. **Expiration**: Elige la duración que prefieras
-5. **Repository access**: "Public repositories" es suficiente
-6. **Account permissions** (IMPORTANTE):
-   - Busca **"Plan"** (NO "Copilot Requests")
-   - Selecciona **"Read-only"**
-7. Genera el token y cópialo
+1. Go to: https://github.com/settings/personal-access-tokens/new
+2. **Token name**: Any name (e.g., "Copilot Usage CLI")
+3. **Resource owner**: Select your account
+4. **Expiration**: Choose your preferred duration
+5. **Repository access**: "Public repositories" is sufficient
+6. **Account permissions** (IMPORTANT):
+   - Look for **"Plan"** (NOT "Copilot Requests")
+   - Select **"Read-only"**
+7. Generate and copy the token
 
-**⚠️ NOTA**: El permiso necesario es **"Plan"**, no "Copilot Requests". Son diferentes permisos.
+**Note**: The required permission is **"Plan"**, not "Copilot Requests". These are different permissions.
 
-### Seleccionar tema
+### Select Theme
 
-Después de introducir el token, elige tu tema preferido:
-- `dark` (por defecto)
-- `light`
-- `dracula`
-- `nord`
-- `monokai`
-- `gruvbox`
+After entering the token, choose your preferred theme from the 9 available options. Configuration is saved to: `~/.config/copilot-usage/config.toml`
 
-La configuración se guarda en: `~/.config/copilot-usage/config.toml`
+## Usage
 
-## Uso
-
-### Ver dashboard
+### View Interactive Dashboard
 ```bash
 copilot-usage
 ```
 
-### Forzar actualización (ignorar caché)
+### Force Refresh from API
 ```bash
 copilot-usage --refresh
 ```
 
-### Ver estado del caché
+![Refresh API Animation](assets/Refresh_api.gif)
+
+### Check Cache Status
 ```bash
 copilot-usage --cache-status
 ```
 
-### Cambiar tema temporalmente
+### Change Theme Temporarily
 ```bash
 copilot-usage --theme nord
 ```
 
-### Reconfigurar (cambiar token)
+### Waybar Mode (JSON Output)
 ```bash
-copilot-usage reconfigure
-# o
-copilot-usage reset
+copilot-usage --waybar
 ```
 
-Si hay un error de autenticación, el programa te preguntará automáticamente si quieres reconfigurar.
+### Reconfigure Token
+```bash
+copilot-usage reconfigure
+```
 
-### Ver configuración
+### View Current Configuration
 ```bash
 copilot-usage config
 ```
 
-### Resetear configuración
+### Reset Configuration
 ```bash
 copilot-usage reset
 ```
 
-## Integración con Waybar
+## Keyboard Shortcuts in Dashboard
 
-Para mostrar el uso de Copilot en Waybar, añade esto a tu configuración de Waybar (`~/.config/waybar/config`):
+| Key | Action |
+|-------|--------|
+| `r` | Refresh data from API |
+| `t` | Open theme selector |
+| `/` | Open command menu |
+| `c` | Show cache information |
+| `?` | Show help |
+| `Esc` or `q` | Close modal / Exit |
+
+## Waybar Integration for Hyprland
+
+This integration has been specifically tested on **Hyprland** window manager. To display Copilot usage in your Waybar:
+
+### 1. Add to Waybar config (`~/.config/waybar/config`):
 
 ```json
 "custom/copilot": {
   "exec": "copilot-usage --waybar",
   "interval": 300,
   "return-type": "json",
-  "format": " {}",
+  "format": "{}",
   "tooltip": true,
   "class": "copilot-usage"
 }
 ```
 
-Y añade los estilos CSS en `~/.config/waybar/style.css`:
+### 2. Add CSS styles (`~/.config/waybar/style.css`):
 
 ```css
 #custom-copilot {
   padding: 0 10px;
   margin: 0 5px;
-  color: #a6e3a1;
 }
 
 #custom-copilot.copilot-critical {
@@ -147,36 +174,121 @@ Y añade los estilos CSS en `~/.config/waybar/style.css`:
 }
 ```
 
-## Estructura de archivos
+### 3. Result:
+
+![Waybar Integration](assets/Waybar_integration.gif)
+
+**Note**: While Waybar is supported on various Wayland compositors, this integration has been primarily tested on Hyprland.
+
+## Architecture
+
+```
+Terminal UI (ratatui)
+├─ UI Components (Header, Progress Bar, Model Table)
+├─ Event Loop (50ms poll, 20 FPS)
+└─ Async Handler (tokio)
+    ├─ Background API calls
+    ├─ Cache operations
+    └─ mpsc channels
+        ↓
+GitHub API
+└─ /users/{username}/settings/billing/premium_request/usage
+```
+
+### Technical Features:
+
+- **Async Architecture**: tokio + mpsc channels + non-blocking event loop
+- **State Machine**: AppState enum with explicit transitions
+- **Pure Components**: Rendering functions with no side effects
+- **Consistent Colors**: Warning (orange) and Error (red) constant across all themes
+
+## File Structure
 
 ```
 ~/.config/copilot-usage/
-└── config.toml          # Configuración
+└── config.toml          # Configuration (token, theme, TTL)
 
 ~/.cache/copilot-usage/
-└── usage.json            # Cache de datos
+└── usage.json           # Usage data cache
 ```
 
-## Configuración manual
+## Manual Configuration
 
-Ejemplo de `~/.config/copilot-usage/config.toml`:
+Example of `~/.config/copilot-usage/config.toml`:
 
 ```toml
-token = "ghp_tu_token_aqui"
-theme = "dark"
+token = "github_pat_xxxxxxxx"
+theme = "nord"
 cache_ttl_minutes = 5
 waybar_format = "{percentage}%"
+username = "your-username"
 ```
 
-## Atajos de teclado en el Dashboard
+### Available Options:
 
-- `q` o `Esc`: Salir del dashboard
+- **token**: GitHub Personal Access Token with `Plan (Read)` permission
+- **theme**: One of: dark, nord, monokai, gruvbox, catppuccin, onedark, tokyonight, solarized, kanagawa
+- **cache_ttl_minutes**: Cache TTL in minutes (default: 5)
+- **waybar_format**: Format for Waybar (uses `{percentage}`, `{used}`, `{limit}`, `{remaining}`)
+- **username**: Your GitHub username (auto-detected)
 
-## Dependencias
+## Development
 
-- Rust 1.70+ (para compilar)
-- GitHub Personal Access Token con permiso `Plan (Read)`
+### Useful Commands
 
-## License
+```bash
+# Format code
+cargo fmt
 
-MIT
+# Run linter
+cargo clippy -- -D warnings
+
+# Run tests
+cargo test
+
+# Build release
+cargo build --release
+```
+
+### Pre-commit Checks
+
+```bash
+cargo build --release && cargo clippy -- -D warnings && cargo fmt -- --check
+```
+
+## Requirements
+
+- **Rust** 1.70+ (to compile)
+- **GitHub Personal Access Token** with `Plan (Read)` permission
+- **Linux** (tested on Linux systems with Hyprland)
+- Terminal with Unicode support (for progress bar characters)
+
+## Troubleshooting
+
+### Error: "Token validation failed"
+- Verify the token has `Plan (Read)` permission
+- Fine-grained tokens need account permission, not repository permission
+- Try a classic token with `read:user` scope
+
+### Spinner Not Visible
+- Your terminal needs Braille Unicode character support
+- Test with Alacritty, Kitty, or GNOME Terminal
+- Verify: `echo "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"`
+
+### Cache Always Expired
+- Verify the file exists: `ls ~/.cache/copilot-usage/`
+- Check permissions: `ls -la ~/.cache/copilot-usage/`
+- Default TTL is 5 minutes
+
+## Platform Notes
+
+This tool has been **developed and tested exclusively on Linux** systems. While it may work on other platforms, it is specifically designed for:
+
+- Linux terminals with Unicode support
+- Hyprland window manager for Waybar integration
+- XDG-compliant directory structure (`~/.config/`, `~/.cache/`)
+
+
+---
+
+Built with Rust for Linux systems
