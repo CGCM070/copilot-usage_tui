@@ -90,8 +90,8 @@ fn render_table(
             let usage_str = format!("{:.0}/{:.0}", model.used, model.limit);
             let display_name = model.name.strip_prefix("Auto: ").unwrap_or(&model.name);
 
-            // Segmented progress bar (green -> orange -> red)
-            let bar_width: usize = 60;
+            // Segmented progress bar (green -> orange -> red) - Vero style
+            let bar_width: usize = 30; // Reduced because each char has a trailing space
             let filled = ((model.percentage / 100.0) * bar_width as f64) as usize;
             let filled = filled.min(bar_width);
 
@@ -99,18 +99,15 @@ fn render_table(
             let zone_success_end = ((75.0 / 100.0) * bar_width as f64) as usize;
             let zone_warning_end = ((90.0 / 100.0) * bar_width as f64) as usize;
 
-            // Build segmented bar spans
+            // Build segmented bar spans (Vero-style: spaced squares)
             let mut bar_spans: Vec<Span> = Vec::new();
 
             // Segment 1: Success (0-75%)
             let success_chars = filled.min(zone_success_end);
             if success_chars > 0 {
                 bar_spans.push(Span::styled(
-                    "█".repeat(success_chars),
-                    Style::default()
-                        .fg(colors.success)
-                        .add_modifier(Modifier::UNDERLINED)
-                        .underline_color(colors.border),
+                    "■ ".repeat(success_chars),
+                    Style::default().fg(colors.success),
                 ));
             }
 
@@ -121,11 +118,8 @@ fn render_table(
                     .saturating_sub(zone_success_end);
                 if warning_chars > 0 {
                     bar_spans.push(Span::styled(
-                        "█".repeat(warning_chars),
-                        Style::default()
-                            .fg(Color::Rgb(255, 184, 108))
-                            .add_modifier(Modifier::UNDERLINED)
-                            .underline_color(colors.border),
+                        "■ ".repeat(warning_chars),
+                        Style::default().fg(Color::Rgb(255, 184, 108)),
                     ));
                 }
             }
@@ -135,24 +129,18 @@ fn render_table(
                 let error_chars = filled.saturating_sub(zone_warning_end);
                 if error_chars > 0 {
                     bar_spans.push(Span::styled(
-                        "█".repeat(error_chars),
-                        Style::default()
-                            .fg(Color::Rgb(255, 85, 85))
-                            .add_modifier(Modifier::UNDERLINED)
-                            .underline_color(colors.border),
+                        "■ ".repeat(error_chars),
+                        Style::default().fg(Color::Rgb(255, 85, 85)),
                     ));
                 }
             }
 
-            // Empty part
+            // Empty part (Vero-style: spaced dots)
             let empty_len = bar_width.saturating_sub(filled);
             if empty_len > 0 {
                 bar_spans.push(Span::styled(
-                    "░".repeat(empty_len),
-                    Style::default()
-                        .fg(colors.muted)
-                        .add_modifier(Modifier::UNDERLINED)
-                        .underline_color(colors.border),
+                    "· ".repeat(empty_len),
+                    Style::default().fg(colors.muted),
                 ));
             }
 
