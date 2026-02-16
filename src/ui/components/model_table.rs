@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::{Alignment, Constraint, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table},
@@ -83,15 +83,22 @@ fn render_table(
         .take(visible_count)
         .collect();
 
+    // Calculate responsive bar width with max limit and side gaps
+    // Progress column gets ~56% of width, minus spacers and gaps
+    let progress_col_width = ((area.width as f32 * 0.56) as u16).saturating_sub(4); // -4 for gaps
+    const MAX_CELLS: usize = 40;
+    const CELL_WIDTH: usize = 2; // char + space
+    let max_bar_chars = (progress_col_width as usize / CELL_WIDTH).min(MAX_CELLS);
+    let bar_width = max_bar_chars.max(10); // Minimum 10 cells
+
     let rows: Vec<Row> = visible_models
         .iter()
         .map(|model| {
             let percentage_str = format!("{:.1}%", model.percentage);
-            let usage_str = format!("{:.0}/{:.0}", model.used, model.limit);
+            let usage_str = format!("{:.0}", model.used);
             let display_name = model.name.strip_prefix("Auto: ").unwrap_or(&model.name);
 
-            // Segmented progress bar (green -> orange -> red) - Vero style
-            let bar_width: usize = 30; // Reduced because each char has a trailing space
+            // Build responsive segmented progress bar
             let filled = ((model.percentage / 100.0) * bar_width as f64) as usize;
             let filled = filled.min(bar_width);
 
@@ -145,7 +152,6 @@ fn render_table(
             }
 
             Row::new(vec![
-                Cell::from(""), // Left Spacer
                 Cell::from(Span::styled(
                     display_name.to_string(),
                     Style::default().fg(colors.foreground),
@@ -156,10 +162,9 @@ fn render_table(
                     Style::default().fg(get_usage_color(model.percentage, colors)),
                 )),
                 Cell::from(Span::styled(
-                    format!("{:^10}", usage_str),
+                    format!("{:>5}", usage_str),
                     Style::default().fg(colors.muted),
                 )),
-                Cell::from(""), // Right Spacer
             ])
         })
         .collect();
@@ -167,22 +172,27 @@ fn render_table(
     let table = Table::new(
         rows,
         [
-            Constraint::Length(1),      // Left Spacer (Margin)
-            Constraint::Percentage(22), // Model (Reduced to 22%)
-            Constraint::Percentage(56), // Progress (Increased to 56%)
+            Constraint::Percentage(25), // Model
+            Constraint::Percentage(58), // Progress
             Constraint::Percentage(10), // Usage
-            Constraint::Percentage(10), // Count
-            Constraint::Length(1),      // Right Spacer (Margin)
+            Constraint::Length(7),      // Count (fixed width)
         ],
     )
     .header(
-        Row::new(vec!["", "Model", "Progress", " Usage", "  Count", ""]).style(
+        Row::new(vec!["Model", "Progress", "Usage", "Count"]).style(
             Style::default()
                 .fg(colors.foreground)
                 .add_modifier(Modifier::BOLD),
         ),
     )
-    .column_spacing(1);
+    .column_spacing(2);
 
-    f.render_widget(table, area);
+    // Apply horizontal margin like usage_overall does
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0)])
+        .horizontal_margin(1)
+        .split(area);
+
+    f.render_widget(table, layout[0]);
 }

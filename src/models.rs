@@ -50,6 +50,7 @@ pub struct UsageStats {
 pub struct ModelUsage {
     pub name: String,
     pub used: f64,
+    #[allow(dead_code)]
     pub limit: f64,
     pub percentage: f64,
 }
