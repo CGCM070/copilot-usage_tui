@@ -1,6 +1,6 @@
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    layout::{Alignment, Constraint, Rect},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table},
     Frame,
@@ -9,8 +9,11 @@ use ratatui::{
 use crate::models::UsageStats;
 use crate::themes::ThemeColors;
 use crate::ui::state::AppStateManager;
-
-use super::super::get_usage_color;
+use crate::ui::styles::{
+    calculate_filled_cells, calculate_responsive_bar_width, calculate_zone_boundaries,
+    format_count, format_percentage, header_style, muted_style, usage_style,
+    with_horizontal_margin, BAR_EMPTY, BAR_FILLED, ERROR_COLOR, WARNING_COLOR,
+};
 
 pub fn render(
     f: &mut Frame,
@@ -27,11 +30,7 @@ pub fn render(
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(colors.border))
-        .title_style(
-            Style::default()
-                .fg(colors.foreground)
-                .add_modifier(Modifier::BOLD),
-        );
+        .title_style(header_style(colors));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -60,7 +59,7 @@ fn build_title(has_scroll: bool, scroll: usize, total: usize, visible: usize) ->
 fn render_empty_state(f: &mut Frame, area: Rect, colors: &ThemeColors) {
     let no_data = Paragraph::new("No model usage data available")
         .alignment(Alignment::Center)
-        .style(Style::default().fg(colors.muted));
+        .style(muted_style(colors));
     f.render_widget(no_data, area);
 }
 
@@ -83,28 +82,20 @@ fn render_table(
         .take(visible_count)
         .collect();
 
-    // Calculate responsive bar width with max limit and side gaps
-    // Progress column gets ~56% of width, minus spacers and gaps
-    let progress_col_width = ((area.width as f32 * 0.56) as u16).saturating_sub(4); // -4 for gaps
-    const MAX_CELLS: usize = 40;
-    const CELL_WIDTH: usize = 2; // char + space
-    let max_bar_chars = (progress_col_width as usize / CELL_WIDTH).min(MAX_CELLS);
-    let bar_width = max_bar_chars.max(10); // Minimum 10 cells
+    // Calculate responsive bar width
+    let progress_col_width = ((area.width as f32 * 0.56) as u16).saturating_sub(4);
+    let bar_width = calculate_responsive_bar_width(progress_col_width);
 
     let rows: Vec<Row> = visible_models
         .iter()
         .map(|model| {
-            let percentage_str = format!("{:.1}%", model.percentage);
-            let usage_str = format!("{:.0}", model.used);
+            let percentage_str = format_percentage(model.percentage);
+            let usage_str = format_count(model.used);
             let display_name = model.name.strip_prefix("Auto: ").unwrap_or(&model.name);
 
             // Build responsive segmented progress bar
-            let filled = ((model.percentage / 100.0) * bar_width as f64) as usize;
-            let filled = filled.min(bar_width);
-
-            // Zone boundaries
-            let zone_success_end = ((75.0 / 100.0) * bar_width as f64) as usize;
-            let zone_warning_end = ((90.0 / 100.0) * bar_width as f64) as usize;
+            let filled = calculate_filled_cells(model.percentage, bar_width);
+            let (zone_success_end, zone_warning_end) = calculate_zone_boundaries(bar_width);
 
             // Build segmented bar spans (Vero-style: spaced squares)
             let mut bar_spans: Vec<Span> = Vec::new();
@@ -113,7 +104,7 @@ fn render_table(
             let success_chars = filled.min(zone_success_end);
             if success_chars > 0 {
                 bar_spans.push(Span::styled(
-                    "■ ".repeat(success_chars),
+                    BAR_FILLED.repeat(success_chars),
                     Style::default().fg(colors.success),
                 ));
             }
@@ -125,8 +116,8 @@ fn render_table(
                     .saturating_sub(zone_success_end);
                 if warning_chars > 0 {
                     bar_spans.push(Span::styled(
-                        "■ ".repeat(warning_chars),
-                        Style::default().fg(Color::Rgb(255, 184, 108)),
+                        BAR_FILLED.repeat(warning_chars),
+                        Style::default().fg(WARNING_COLOR),
                     ));
                 }
             }
@@ -136,8 +127,8 @@ fn render_table(
                 let error_chars = filled.saturating_sub(zone_warning_end);
                 if error_chars > 0 {
                     bar_spans.push(Span::styled(
-                        "■ ".repeat(error_chars),
-                        Style::default().fg(Color::Rgb(255, 85, 85)),
+                        BAR_FILLED.repeat(error_chars),
+                        Style::default().fg(ERROR_COLOR),
                     ));
                 }
             }
@@ -146,8 +137,8 @@ fn render_table(
             let empty_len = bar_width.saturating_sub(filled);
             if empty_len > 0 {
                 bar_spans.push(Span::styled(
-                    "· ".repeat(empty_len),
-                    Style::default().fg(colors.muted),
+                    BAR_EMPTY.repeat(empty_len),
+                    muted_style(colors),
                 ));
             }
 
@@ -159,12 +150,9 @@ fn render_table(
                 Cell::from(Line::from(bar_spans)),
                 Cell::from(Span::styled(
                     format!("{:^8}", percentage_str),
-                    Style::default().fg(get_usage_color(model.percentage, colors)),
+                    usage_style(model.percentage, colors),
                 )),
-                Cell::from(Span::styled(
-                    format!("{:>5}", usage_str),
-                    Style::default().fg(colors.muted),
-                )),
+                Cell::from(Span::styled(usage_str, muted_style(colors))),
             ])
         })
         .collect();
@@ -178,21 +166,10 @@ fn render_table(
             Constraint::Length(7),      // Count (fixed width)
         ],
     )
-    .header(
-        Row::new(vec!["Model", "Progress", "Usage", "Count"]).style(
-            Style::default()
-                .fg(colors.foreground)
-                .add_modifier(Modifier::BOLD),
-        ),
-    )
+    .header(Row::new(vec!["Model", "Progress", " Usage", "Count"]).style(header_style(colors)))
     .column_spacing(2);
 
     // Apply horizontal margin like usage_overall does
-    let layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(0)])
-        .horizontal_margin(1)
-        .split(area);
-
+    let layout = with_horizontal_margin(area);
     f.render_widget(table, layout[0]);
 }

@@ -3,6 +3,7 @@ pub mod components;
 pub mod events;
 pub mod layout;
 pub mod state;
+pub mod styles;
 
 use std::io;
 
@@ -16,7 +17,6 @@ use ratatui::{
     Frame, Terminal,
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
-    style::Color,
 };
 
 use crate::models::{Theme, UsageStats};
@@ -224,17 +224,4 @@ fn render_help_bar(
     f.render_widget(help, area);
 }
 
-/// Colores constantes para warning/error (universales)
-const WARNING_COLOR: Color = Color::Rgb(255, 184, 108);
-const ERROR_COLOR: Color = Color::Rgb(255, 85, 85);
 
-/// Obtiene el color según el porcentaje de uso
-fn get_usage_color(percentage: f64, colors: &ThemeColors) -> Color {
-    if percentage >= 90.0 {
-        ERROR_COLOR
-    } else if percentage >= 75.0 {
-        WARNING_COLOR
-    } else {
-        colors.success
-    }
-}

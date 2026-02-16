@@ -7,8 +7,7 @@ use ratatui::{
 use crate::themes::ThemeColors;
 use crate::ui::layout::{centered_rect, POPUP_HEIGHT, POPUP_WIDTH};
 use crate::ui::state::AppStateManager;
-
-use super::super::get_usage_color;
+use crate::ui::styles::get_usage_color;
 
 const MIN_VISIBLE_FOR_SCROLL: usize = 5;
 
