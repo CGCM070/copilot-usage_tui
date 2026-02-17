@@ -8,7 +8,7 @@ GitHub Copilot usage tracker CLI - Terminal-based tool written in Rust to visual
 
 **Tested on Linux** - specifically designed and tested on Linux systems with Hyprland window manager.
 
-![Dashboard Layout](assets/UI.png)
+![Dashboard Layout](assets/new_UI.png)
 
 ## Features
 
