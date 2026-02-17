@@ -31,6 +31,10 @@ pub const BAR_EMPTY: &str = "· ";
 pub const BAR_SOLID_FILLED: &str = "█";
 pub const BAR_SOLID_EMPTY: &str = "░";
 
+/// Braille patterns (btop style)
+pub const BAR_BRAILLE_FILLED: &str = "⣿";
+pub const BAR_BRAILLE_EMPTY: &str = "⠀";
+
 /// Color zone thresholds (percentages)
 pub const ZONE_SUCCESS_END: f64 = 75.0;
 pub const ZONE_WARNING_END: f64 = 90.0;
@@ -58,24 +62,49 @@ pub fn muted_style(colors: &ThemeColors) -> Style {
 }
 
 /// Creates a success style
+#[allow(dead_code)]
 pub fn success_style(colors: &ThemeColors) -> Style {
     Style::default().fg(colors.success)
 }
 
+/// Creates a bold success style for bars
+pub fn success_style_bold(colors: &ThemeColors) -> Style {
+    Style::default()
+        .fg(colors.success)
+        .add_modifier(Modifier::BOLD)
+}
+
 /// Creates a style for usage percentage based on the value
+#[allow(dead_code)]
 pub fn usage_style(percentage: f64, colors: &ThemeColors) -> Style {
     let color = get_usage_color(percentage, colors);
     Style::default().fg(color)
 }
 
 /// Creates a warning style (constant orange)
+#[allow(dead_code)]
 pub fn warning_style() -> Style {
     Style::default().fg(WARNING_COLOR)
 }
 
+/// Creates a bold warning style for bars
+pub fn warning_style_bold() -> Style {
+    Style::default()
+        .fg(WARNING_COLOR)
+        .add_modifier(Modifier::BOLD)
+}
+
 /// Creates an error style (constant red)
+#[allow(dead_code)]
 pub fn error_style() -> Style {
     Style::default().fg(ERROR_COLOR)
+}
+
+/// Creates a bold error style for bars
+pub fn error_style_bold() -> Style {
+    Style::default()
+        .fg(ERROR_COLOR)
+        .add_modifier(Modifier::BOLD)
 }
 
 /// Creates a bordered block style

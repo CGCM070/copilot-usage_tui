@@ -1,5 +1,6 @@
 use ratatui::{
     style::{Modifier, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem},
     Frame,
 };
@@ -7,7 +8,6 @@ use ratatui::{
 use crate::themes::ThemeColors;
 use crate::ui::layout::{centered_rect, POPUP_HEIGHT, POPUP_WIDTH};
 use crate::ui::state::AppStateManager;
-use crate::ui::styles::get_usage_color;
 
 const MIN_VISIBLE_FOR_SCROLL: usize = 5;
 
@@ -53,16 +53,25 @@ pub fn render(f: &mut Frame, colors: &ThemeColors, app: &AppStateManager) {
             let padding = " ".repeat(inner.width as usize - label.len());
             let text = format!("{}{}", label, padding);
 
-            let style = if actual_index == app.selected_command {
+            // Style for the text (foreground color)
+            let text_style = if actual_index == app.selected_command {
                 Style::default()
-                    .fg(colors.foreground)
-                    .bg(get_usage_color(50.0, colors))
+                    .fg(colors.success)
                     .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(colors.foreground)
             };
 
-            ListItem::new(text).style(style)
+            let line = Line::from(vec![Span::styled(text, text_style)]);
+
+            // Background style for the entire item
+            let item_style = if actual_index == app.selected_command {
+                Style::default().bg(colors.bar_empty)
+            } else {
+                Style::default()
+            };
+
+            ListItem::new(line).style(item_style)
         })
         .collect();
 

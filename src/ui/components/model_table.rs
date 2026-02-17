@@ -11,8 +11,9 @@ use crate::themes::ThemeColors;
 use crate::ui::state::AppStateManager;
 use crate::ui::styles::{
     calculate_filled_cells, calculate_responsive_bar_width, calculate_zone_boundaries,
-    format_count, format_percentage, header_style, muted_style, usage_style,
-    with_horizontal_margin, BAR_EMPTY, BAR_FILLED, ERROR_COLOR, WARNING_COLOR,
+    error_style_bold, format_count, format_percentage, header_style, muted_style,
+    success_style_bold, usage_style, warning_style_bold, with_horizontal_margin, BAR_EMPTY,
+    BAR_FILLED,
 };
 
 pub fn render(
@@ -82,6 +83,64 @@ fn render_table(
         .take(visible_count)
         .collect();
 
+    // Check if we should use compact mode (hide progress bar when terminal is small)
+    let is_compact = area.width < 60;
+
+    if is_compact {
+        render_compact_table(f, area, &visible_models, colors);
+    } else {
+        render_full_table(f, area, &visible_models, colors);
+    }
+}
+
+fn render_compact_table(
+    f: &mut Frame,
+    area: Rect,
+    visible_models: &[&crate::models::ModelUsage],
+    colors: &ThemeColors,
+) {
+    let rows: Vec<Row> = visible_models
+        .iter()
+        .map(|model| {
+            let percentage_str = format_percentage(model.percentage);
+            let usage_str = format_count(model.used);
+            let display_name = model.name.strip_prefix("Auto: ").unwrap_or(&model.name);
+
+            Row::new(vec![
+                Cell::from(Span::styled(
+                    display_name.to_string(),
+                    Style::default().fg(colors.foreground),
+                )),
+                Cell::from(Span::styled(
+                    format!("{:^8}", percentage_str),
+                    usage_style(model.percentage, colors),
+                )),
+                Cell::from(Span::styled(usage_str, muted_style(colors))),
+            ])
+        })
+        .collect();
+
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Percentage(65), // Model (wider when no progress bar)
+            Constraint::Percentage(20), // Usage
+            Constraint::Length(7),      // Count
+        ],
+    )
+    .header(Row::new(vec!["Model", "Usage", "Count"]).style(header_style(colors)))
+    .column_spacing(2);
+
+    let layout = with_horizontal_margin(area);
+    f.render_widget(table, layout[0]);
+}
+
+fn render_full_table(
+    f: &mut Frame,
+    area: Rect,
+    visible_models: &[&crate::models::ModelUsage],
+    colors: &ThemeColors,
+) {
     // Calculate responsive bar width
     let progress_col_width = ((area.width as f32 * 0.56) as u16).saturating_sub(4);
     let bar_width = calculate_responsive_bar_width(progress_col_width);
@@ -105,7 +164,7 @@ fn render_table(
             if success_chars > 0 {
                 bar_spans.push(Span::styled(
                     BAR_FILLED.repeat(success_chars),
-                    Style::default().fg(colors.success),
+                    success_style_bold(colors),
                 ));
             }
 
@@ -117,7 +176,7 @@ fn render_table(
                 if warning_chars > 0 {
                     bar_spans.push(Span::styled(
                         BAR_FILLED.repeat(warning_chars),
-                        Style::default().fg(WARNING_COLOR),
+                        warning_style_bold(),
                     ));
                 }
             }
@@ -128,7 +187,7 @@ fn render_table(
                 if error_chars > 0 {
                     bar_spans.push(Span::styled(
                         BAR_FILLED.repeat(error_chars),
-                        Style::default().fg(ERROR_COLOR),
+                        error_style_bold(),
                     ));
                 }
             }
@@ -166,10 +225,9 @@ fn render_table(
             Constraint::Length(7),      // Count (fixed width)
         ],
     )
-    .header(Row::new(vec!["Model", "Progress", " Usage", "Count"]).style(header_style(colors)))
+    .header(Row::new(vec!["Model", "Progress", "Usage", "Count"]).style(header_style(colors)))
     .column_spacing(2);
 
-    // Apply horizontal margin like usage_overall does
     let layout = with_horizontal_margin(area);
     f.render_widget(table, layout[0]);
 }

@@ -8,7 +8,7 @@ GitHub Copilot usage tracker CLI - Terminal-based tool written in Rust to visual
 
 **Tested on Linux** - specifically designed and tested on Linux systems with Hyprland window manager.
 
-![Dashboard Layout](assets/layout.png)
+![Dashboard Layout](assets/new_UI.png)
 
 ## Features
 
@@ -22,7 +22,7 @@ GitHub Copilot usage tracker CLI - Terminal-based tool written in Rust to visual
 
 ## Available Themes
 
-![Themes Showcase](assets/themes.png)
+![Themes Showcase](assets/theme_selector.png)
 
 ## Installation
 
@@ -89,7 +89,7 @@ copilot-usage
 copilot-usage --refresh
 ```
 
-![Refresh API Animation](assets/Refresh_api.gif)
+![Refresh API Animation](assets/refresh.gif)
 
 ### Check Cache Status
 ```bash
@@ -176,7 +176,7 @@ This integration has been specifically tested on **Hyprland** window manager. To
 
 ### 3. Result:
 
-![Waybar Integration](assets/Waybar_integration.gif)
+![Waybar Integration](assets/Waybar.gif)
 
 **Note**: While Waybar is supported on various Wayland compositors, this integration has been primarily tested on Hyprland.
 

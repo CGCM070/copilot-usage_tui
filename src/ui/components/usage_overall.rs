@@ -10,8 +10,8 @@ use ratatui::{
 use crate::models::UsageStats;
 use crate::themes::ThemeColors;
 use crate::ui::styles::{
-    calculate_filled_cells, calculate_zone_boundaries, error_style, header_style, muted_style,
-    success_style, usage_style, warning_style, BAR_SOLID_EMPTY, BAR_SOLID_FILLED,
+    calculate_filled_cells, calculate_zone_boundaries, error_style_bold, header_style, muted_style,
+    success_style_bold, usage_style, warning_style_bold, BAR_BRAILLE_EMPTY, BAR_BRAILLE_FILLED,
 };
 
 pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColors) {
@@ -31,7 +31,7 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
             Constraint::Length(1), // Top Padding
             Constraint::Length(1), // Requests Label
             Constraint::Length(1), // Requests Bar
-            Constraint::Length(1), // Spacer
+            Constraint::Length(0), // Spacer (reduced to bring Month closer to bar)
             Constraint::Length(1), // Month Label
             Constraint::Length(1), // Month Bar
         ])
@@ -61,8 +61,8 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     let success_chars = filled_len.min(zone_success_end);
     if success_chars > 0 {
         bar_spans.push(Span::styled(
-            BAR_SOLID_FILLED.repeat(success_chars),
-            success_style(colors),
+            BAR_BRAILLE_FILLED.repeat(success_chars),
+            success_style_bold(colors),
         ));
     }
 
@@ -73,8 +73,8 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
             .saturating_sub(zone_success_end);
         if warning_chars > 0 {
             bar_spans.push(Span::styled(
-                BAR_SOLID_FILLED.repeat(warning_chars),
-                warning_style(),
+                BAR_BRAILLE_FILLED.repeat(warning_chars),
+                warning_style_bold(),
             ));
         }
     }
@@ -84,8 +84,8 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
         let error_chars = filled_len.saturating_sub(zone_warning_end);
         if error_chars > 0 {
             bar_spans.push(Span::styled(
-                BAR_SOLID_FILLED.repeat(error_chars),
-                error_style(),
+                BAR_BRAILLE_FILLED.repeat(error_chars),
+                error_style_bold(),
             ));
         }
     }
@@ -94,7 +94,7 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     let empty_len = bar_width.saturating_sub(filled_len);
     if empty_len > 0 {
         bar_spans.push(Span::styled(
-            BAR_SOLID_EMPTY.repeat(empty_len),
+            BAR_BRAILLE_EMPTY.repeat(empty_len),
             muted_style(colors),
         ));
     }
@@ -133,10 +133,7 @@ pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColor
     }
 
     // Current position indicator - always success (green) to indicate "we're here, reset coming"
-    month_spans.push(Span::styled(
-        "|",
-        success_style(colors).add_modifier(Modifier::BOLD),
-    ));
+    month_spans.push(Span::styled("|", success_style_bold(colors)));
 
     // Future days - use bar_empty (dark) color
     if pipe_pos < month_bar_width - 1 {
