@@ -46,6 +46,20 @@ pub const WARNING_COLOR: Color = Color::Rgb(255, 184, 108);
 pub const ERROR_COLOR: Color = Color::Rgb(255, 85, 85);
 
 // ============================================================================
+// Icons (Nerd Fonts / Unicode)
+// ============================================================================
+
+/// Nerd Font Icons
+pub const ICON_USER: &str = "";
+pub const ICON_CALENDAR: &str = "";
+pub const ICON_RESET: &str = "↻";
+pub const ICON_THEME: &str = "";
+pub const ICON_ROBOT: &str = "";
+pub const ICON_GITHUB: &str = "";
+pub const ICON_USAGE: &str = "";
+pub const ICON_LIST: &str = "";
+
+// ============================================================================
 // Style Builders
 // ============================================================================
 

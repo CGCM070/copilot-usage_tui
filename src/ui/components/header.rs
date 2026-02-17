@@ -9,6 +9,7 @@ use ratatui::{
 
 use crate::models::{Theme, UsageStats};
 use crate::themes::ThemeColors;
+use crate::ui::styles::{ICON_CALENDAR, ICON_RESET, ICON_ROBOT, ICON_THEME, ICON_USER};
 
 pub fn render(f: &mut Frame, area: Rect, stats: &UsageStats, colors: &ThemeColors, theme: Theme) {
     // Check for compact mode
@@ -62,7 +63,7 @@ fn render_compact(
 
     // Title row (left aligned)
     let title = Paragraph::new(Line::from(vec![Span::styled(
-        "GitHub Copilot Usage",
+        format!("{} GitHub Copilot Usage", ICON_ROBOT),
         Style::default()
             .fg(colors.foreground)
             .add_modifier(Modifier::BOLD),
@@ -77,7 +78,7 @@ fn render_compact(
 
     // Left side: only username
     let user_info = Paragraph::new(Line::from(vec![Span::styled(
-        display_username,
+        format!("{} {}", ICON_USER, display_username),
         Style::default().fg(colors.muted),
     )]));
     f.render_widget(user_info, info_cols[0]);
@@ -85,7 +86,7 @@ fn render_compact(
     // Right side: theme name + color dots (right aligned)
     let theme_info = Paragraph::new(Line::from(vec![
         Span::styled(
-            format!("{} ", theme_name),
+            format!("{} {} ", ICON_THEME, theme_name),
             Style::default().fg(colors.foreground),
         ),
         Span::styled("●", Style::default().fg(colors.foreground)),
@@ -120,7 +121,7 @@ fn render_full(
 
     // Title row (left aligned)
     let title = Paragraph::new(Line::from(vec![Span::styled(
-        "GitHub Copilot Usage",
+        format!("{} GitHub Copilot Usage", ICON_ROBOT),
         Style::default()
             .fg(colors.foreground)
             .add_modifier(Modifier::BOLD),
@@ -136,23 +137,30 @@ fn render_full(
     // Left side: date, reset, username
     let date_info = Paragraph::new(Line::from(vec![
         Span::styled(
-            format!("{}", Local::now().format("%d %B %Y")),
+            format!("{} {}", ICON_CALENDAR, Local::now().format("%d %B %Y")),
             Style::default().fg(colors.muted),
         ),
         Span::styled(" • ", Style::default().fg(colors.muted)),
         Span::styled(
-            format!("Resets: {}", stats.reset_date.format("%b %d")),
+            format!(
+                "{} Resets: {}",
+                ICON_RESET,
+                stats.reset_date.format("%b %d")
+            ),
             Style::default().fg(colors.muted),
         ),
         Span::styled(" • ", Style::default().fg(colors.muted)),
-        Span::styled(display_username, Style::default().fg(colors.muted)),
+        Span::styled(
+            format!("{} {}", ICON_USER, display_username),
+            Style::default().fg(colors.muted),
+        ),
     ]));
     f.render_widget(date_info, info_cols[0]);
 
     // Right side: theme name + color dots (right aligned)
     let theme_info = Paragraph::new(Line::from(vec![
         Span::styled(
-            format!("{} ", theme_name),
+            format!("{} {} ", ICON_THEME, theme_name),
             Style::default().fg(colors.foreground),
         ),
         Span::styled("●", Style::default().fg(colors.foreground)),
