@@ -13,7 +13,7 @@ use crate::ui::styles::{
     calculate_filled_cells, calculate_responsive_bar_width, calculate_zone_boundaries,
     error_style_bold, format_count, format_percentage, header_style, muted_style,
     success_style_bold, usage_style, warning_style_bold, with_horizontal_margin, BAR_EMPTY,
-    BAR_FILLED,
+    BAR_FILLED, ICON_LIST,
 };
 
 pub fn render(
@@ -45,7 +45,7 @@ pub fn render(
 }
 
 fn build_title(has_scroll: bool, scroll: usize, total: usize, visible: usize) -> String {
-    let mut title = " Per-Model Usage: ".to_string();
+    let mut title = format!(" {} Per-Model Usage: ", ICON_LIST);
     if has_scroll {
         if scroll > 0 {
             title.insert_str(0, "↑ ");

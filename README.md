@@ -14,7 +14,7 @@ GitHub Copilot usage tracker CLI - Terminal-based tool written in Rust to visual
 
 - **Interactive Dashboard** with segmented progress bars (green → orange → red)
 - **9 Visual Themes**: dark, nord, monokai, gruvbox, catppuccin, onedark, tokyonight, solarized, kanagawa
-- **Async Architecture** with smooth animations (20 FPS)
+- **Async Architecture** with smooth animations (20 FPS)54
 - **Smart Caching** with configurable TTL (default: 5 minutes)
 - **Interactive Modals**: theme selector, command menu, help, cache info
 - **Waybar Integration** for Hyprland status bar (tested on Hyprland)

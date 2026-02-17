@@ -28,7 +28,15 @@ use self::events::EventHandler;
 use self::layout::{centered_rect, dashboard_layout};
 use self::state::{AppState, AppStateManager};
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+/// Idle FPS (1 FPS = 1000ms between frames)
+const IDLE_FPS: u64 = 1;
+const IDLE_FRAME_TIME_MS: u64 = 1000 / IDLE_FPS;
+
+/// Animation FPS (30 FPS = ~33ms between frames)
+const ANIMATION_FPS: u64 = 30;
+const ANIMATION_FRAME_TIME_MS: u64 = 1000 / ANIMATION_FPS;
 
 /// Formats error for user-friendly display
 fn format_error_for_user(error: &anyhow::Error) -> String {
@@ -78,32 +86,64 @@ fn run_app<B: Backend>(
     let mut colors = ThemeColors::from_theme(theme);
     let async_handler = AsyncHandler::new();
     let mut stats = initial_stats.clone();
+    
+    // Track last draw time for FPS control
+    let mut last_draw_time = Instant::now();
+    let mut needs_redraw = true; // Initial draw
 
     loop {
         // Check for pending theme change (instant, in-place)
         if let Some(new_theme) = app.pending_theme_change.take() {
             theme = new_theme;
             colors = ThemeColors::from_theme(theme);
-            // Save to config in background (non-blocking)
             async_handler.spawn_save_theme(theme.as_str().to_string());
+            needs_redraw = true;
         }
 
-        terminal.draw(|f| render_ui(f, &stats, &colors, app, theme))?;
+        // Determine if we're in animation mode (loading states with spinner)
+        let is_animating = matches!(app.state, AppState::LoadingRefresh | AppState::LoadingCache);
+        
+        // Calculate target frame time based on state
+        let target_frame_time_ms = if is_animating { 
+            ANIMATION_FRAME_TIME_MS 
+        } else { 
+            IDLE_FRAME_TIME_MS 
+        };
+        
+        // Calculate timeout for event polling
+        let elapsed_since_draw = last_draw_time.elapsed().as_millis() as u64;
+        let poll_timeout_ms = if needs_redraw {
+            0 // Draw immediately
+        } else {
+            target_frame_time_ms.saturating_sub(elapsed_since_draw).max(1)
+        };
 
-        // Poll events con timeout (non-blocking) - cada 50ms para spinner rápido
-        if event::poll(Duration::from_millis(50))?
-            && let Ok(evt) = event::read()
-            && EventHandler::handle_event(app, evt, stats.models.len(), &async_handler)
-        {
-            return Ok(());
+        // Poll events with adaptive timeout
+        if event::poll(Duration::from_millis(poll_timeout_ms))? {
+            if let Ok(evt) = event::read() {
+                if EventHandler::handle_event(app, evt, stats.models.len(), &async_handler) {
+                    return Ok(());
+                }
+                needs_redraw = true; // Event occurred, need to redraw
+            }
         }
 
-        // Avanzar spinner si estamos en loading
-        if matches!(app.state, AppState::LoadingRefresh | AppState::LoadingCache) {
+        // Check if we should redraw (time-based or event-based)
+        let should_redraw = needs_redraw || elapsed_since_draw >= target_frame_time_ms;
+        
+        if should_redraw {
+            terminal.draw(|f| render_ui(f, &stats, &colors, app, theme))?;
+            last_draw_time = Instant::now();
+            needs_redraw = false;
+        }
+
+        // Advance spinner if animating
+        if is_animating {
             app.advance_spinner();
+            needs_redraw = true; // Spinner changed, need next frame
         }
 
-        // Check si hay resultados async
+        // Check async results
         if let Some(result) = async_handler.try_recv() {
             match result {
                 AsyncResult::RefreshComplete(Ok(new_stats)) => {
@@ -111,7 +151,6 @@ fn run_app<B: Backend>(
                     app.state = AppState::Dashboard;
                 }
                 AsyncResult::RefreshComplete(Err(e)) => {
-                    // Mostrar error limpio para el usuario
                     let error_msg = format_error_for_user(&e);
                     let debug_msg = format_error_debug(&e);
                     app.state = AppState::ShowError {
@@ -124,13 +163,13 @@ fn run_app<B: Backend>(
                     app.state = AppState::ShowCacheInfo(info);
                 }
                 AsyncResult::ThemeSaved(Ok(())) => {
-                    // Theme saved successfully, nothing to do (already applied)
+                    // Theme saved successfully
                 }
                 AsyncResult::ThemeSaved(Err(_)) => {
-                    // Silently ignore save errors - theme is already applied visually
-                    // User can still use the app, config will be out of sync
+                    // Silently ignore save errors
                 }
             }
+            needs_redraw = true; // State changed, need to redraw
         }
     }
 }

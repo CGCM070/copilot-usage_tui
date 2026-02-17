@@ -30,7 +30,7 @@ pub fn dashboard_layout(area: Rect, model_count: usize) -> Vec<Rect> {
     // Calculate required height for models:
     // Header (1) + Borders (2) + Rows (model_count) + Bottom Padding (1)
     // We add a safety minimum of 4
-    let model_height = ((model_count as u16) + 2).max(4);
+    let model_height = ((model_count as u16) + 3).max(4);
 
     Layout::default()
         .direction(Direction::Vertical)
